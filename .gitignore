@@ -1,0 +1,62 @@
+# Virtual Environment
+.venv/
+env/
+venv/
+ENV/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing & Linting
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# Jupyter Notebook Checkpoints & Cache
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+.matplotlib_cache/
+
+# IDE & Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Large Datasets & Binary Artifacts (Crucial - Keep out of Git)
+data/raw/*.zip
+data/raw/*.tar.gz
+data/raw/*.tmp
+data/extracted/
+data/processed/*.npy
+
+# Local environment & secret files
+.env
+.env.local
+*.log

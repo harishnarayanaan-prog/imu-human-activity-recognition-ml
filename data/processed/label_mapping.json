@@ -1,0 +1,26 @@
+{
+  "raw_to_zero_index": {
+    "1": 0,
+    "2": 1,
+    "3": 2,
+    "4": 3,
+    "5": 4,
+    "6": 5
+  },
+  "zero_index_to_activity": {
+    "0": "WALKING",
+    "1": "WALKING_UPSTAIRS",
+    "2": "WALKING_DOWNSTAIRS",
+    "3": "SITTING",
+    "4": "STANDING",
+    "5": "LAYING"
+  },
+  "activity_to_zero_index": {
+    "WALKING": 0,
+    "WALKING_UPSTAIRS": 1,
+    "WALKING_DOWNSTAIRS": 2,
+    "SITTING": 3,
+    "STANDING": 4,
+    "LAYING": 5
+  }
+}
