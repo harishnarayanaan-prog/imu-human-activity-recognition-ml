@@ -78,3 +78,34 @@ def test_sklearn_transformer_interface() -> None:
     assert feats.shape == (4, 204)
     feature_names = extractor.get_feature_names_out()
     assert len(feature_names) == 204
+
+
+def test_invalid_channel_dimension_raises_error() -> None:
+    """Verify ValueError is raised when input channels is not 9."""
+    invalid_channels = np.ones((128, 8), dtype=np.float64)
+    with pytest.raises(ValueError, match="Expected 9 channels"):
+        extract_features(invalid_channels)
+
+
+def test_invalid_timesteps_raises_error() -> None:
+    """Verify ValueError is raised when window length is < 2."""
+    invalid_length = np.ones((1, 9), dtype=np.float64)
+    with pytest.raises(ValueError, match="Expected at least 2 samples"):
+        extract_features(invalid_length)
+
+
+def test_sine_wave_frequency_detection() -> None:
+    """Verify that a 2.0 Hz pure sine wave has dominant frequency of ~2.0 Hz."""
+    t = np.arange(128) / 50.0  # 50 Hz sampling rate
+    sine_wave = np.sin(2.0 * np.pi * 2.0 * t)  # 2.0 Hz tone
+    window = np.zeros((128, 9), dtype=np.float64)
+    window[:, 0] = sine_wave  # body_acc_x
+
+    feats = extract_features(window, sampling_rate_hz=50.0)
+    names = get_feature_names()
+    dom_freq_idx = names.index("body_acc_x_dominant_freq")
+    detected_freq = feats[dom_freq_idx]
+
+    # At 50 Hz with 128 samples, frequency resolution is 50/128 = 0.39 Hz
+    # Nearest bin to 2.0 Hz is index 5: 5 * (50/128) = 1.953 Hz
+    assert abs(detected_freq - 1.953) < 0.1, f"Expected ~1.953 Hz, got {detected_freq}"

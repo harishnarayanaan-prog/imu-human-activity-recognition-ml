@@ -118,6 +118,7 @@ class CNN1DHAR:
         self.training_time_sec_: float = 0.0
         self.best_epoch_: int = 0
         self._label_offset: int = 0
+        self.is_fitted_: bool = False
         self.history_: Dict[str, List[float]] = {
             "train_loss": [],
             "val_loss": [],
@@ -252,6 +253,7 @@ class CNN1DHAR:
         if best_weights is not None:
             self.model.load_state_dict(best_weights)
 
+        self.is_fitted_ = True
         self.training_time_sec_ = time.perf_counter() - start_t
         logger.info(
             "1D CNN training complete in %.2fs (Best epoch: %d)",
@@ -262,6 +264,8 @@ class CNN1DHAR:
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Predict activity labels (1..6)."""
+        if not self.is_fitted_:
+            raise RuntimeError("CNN1DHAR has not been trained yet. Call fit() or load() first.")
         self.model.eval()
         t_X = self._prepare_tensor(X).to(self.device)
         loader = DataLoader(TensorDataset(t_X), batch_size=self.batch_size, shuffle=False)
@@ -276,6 +280,8 @@ class CNN1DHAR:
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         """Predict class probabilities."""
+        if not self.is_fitted_:
+            raise RuntimeError("CNN1DHAR has not been trained yet. Call fit() or load() first.")
         self.model.eval()
         t_X = self._prepare_tensor(X).to(self.device)
         loader = DataLoader(TensorDataset(t_X), batch_size=self.batch_size, shuffle=False)
@@ -317,6 +323,7 @@ class CNN1DHAR:
         instance.best_epoch_ = checkpoint.get("best_epoch", 0)
         instance._label_offset = checkpoint.get("label_offset", 0)
         instance.history_ = checkpoint.get("history", {})
+        instance.is_fitted_ = True
         return instance
 
 

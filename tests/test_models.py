@@ -107,3 +107,26 @@ def test_cnn_1d_fit_predict_save(tmp_path: Path) -> None:
     loaded_cnn = CNN1DHAR.load(save_file, device="cpu")
     loaded_preds = loaded_cnn.predict(X_val[:4])
     assert np.array_equal(preds, loaded_preds)
+
+
+def test_cnn_invalid_input_channels_raises_error() -> None:
+    """Verify Conv1DNet raises RuntimeError when channel dimension does not match."""
+    net = Conv1DNet(in_channels=9, num_classes=6)
+    invalid_input = torch.randn(4, 3, 128)  # 3 channels instead of 9
+    with pytest.raises(RuntimeError):
+        net(invalid_input)
+
+
+def test_models_unfitted_predict_raises_error() -> None:
+    """Verify models raise descriptive exceptions when predicting before fit."""
+    rf = RandomForestHAR(n_estimators=5)
+    with pytest.raises(Exception):
+        rf.predict(np.zeros((5, 204)))
+
+    svm = SVMHAR()
+    with pytest.raises(Exception):
+        svm.predict(np.zeros((5, 204)))
+
+    cnn = CNN1DHAR(in_channels=9, num_classes=6)
+    with pytest.raises(Exception):
+        cnn.predict(np.zeros((5, 128, 9)))
