@@ -56,6 +56,13 @@ data/raw/*.tmp
 data/extracted/
 data/processed/*.npy
 
+# Model Checkpoints & Large Binary Artifacts
+models/*.joblib
+models/*.pt
+models/*.pkl
+models/*.onnx
+!models/.gitkeep
+
 # Local environment & secret files
 .env
 .env.local

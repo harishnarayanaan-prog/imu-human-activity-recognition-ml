@@ -1,0 +1,6 @@
+# Keep models directory in version control
+!.gitkeep
+*.joblib
+*.pt
+*.pkl
+*.onnx

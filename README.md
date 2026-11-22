@@ -2,7 +2,7 @@
 
 [![Python 3.14](https://img.shields.io/badge/python-3.14-blue.svg)](https://www.python.org/downloads/)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
-[![Tests: 29 Passed](https://img.shields.io/badge/tests-29%20passed-brightgreen.svg)]()
+[![Tests: 44 Passed](https://img.shields.io/badge/tests-44%20passed-brightgreen.svg)]()
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ---
@@ -171,76 +171,103 @@ python src/data/explore_dataset.py
 
 ### Step 3: Run Zero-Leakage Preprocessing
 ```powershell
-python src/data/preprocess.py
+python -m src.data.preprocess
 ```
 
-### Step 4: Audit Processed Artifacts
+### Step 4: Run Feature Engineering (204 Features)
 ```powershell
-python src/data/generate_metadata.py
+python -m src.features.feature_engineering
 ```
 
-### Step 5: Execute Automated Test Suite
+### Step 5: Train and Evaluate Models
 ```powershell
-pytest -v
+# Train Random Forest Classifier
+python -m src.models.random_forest
+
+# Train Support Vector Machine (RBF Kernel)
+python -m src.models.svm
+
+# Train 1D Deep CNN (PyTorch)
+python -m src.models.cnn_1d
+
+# Run Cross-Model Validation Comparison
+python -m src.evaluation.metrics
+
+# Run Final Frozen Test Set Evaluation
+python scripts/evaluate_final_test.py
+```
+
+### Step 6: Execute Automated Test Suite
+```powershell
+pytest -q
 ```
 
 ---
 
-## 8. Dataset Statistics & Key Findings
+## 8. Model Benchmark Performance
 
-Empirical findings directly extracted from the 10,299 dataset windows:
+All performance metrics are genuine outputs directly evaluated on physical CPU execution.
 
-| Metric | Training Split | Testing Split | Combined |
-|:---|:---:|:---:|:---:|
-| **Window Count** | 7,352 (71.39%) | 2,947 (28.61%) | 10,299 (100.0%) |
-| **Volunteers** | 21 participants | 9 participants | 30 participants |
-| **Window Duration** | 2.56 s (128 samples) | 2.56 s (128 samples) | 2.56 s |
-| **Tensor Dimensions** | `(7352, 128, 9)` | `(2947, 128, 9)` | - |
-| **Missing Values (NaN/Inf)** | 0 | 0 | 0 |
+### A. Subject-Wise Validation Benchmark (1,401 Windows, 4 Unseen Subjects)
+*Zero subject overlap between train and validation partitions.*
 
-### Activity Class Proportions
-- `LAYING`: 1,944 windows (18.88%)
-- `STANDING`: 1,906 windows (18.51%)
-- `SITTING`: 1,777 windows (17.25%)
-- `WALKING`: 1,722 windows (16.72%)
-- `WALKING_UPSTAIRS`: 1,544 windows (14.99%)
-- `WALKING_DOWNSTAIRS`: 1,406 windows (13.65%)
-- **Imbalance Ratio:** $1.38:1$ (balanced distribution, no oversampling required).
+| Model Architecture | Input Features | Accuracy | Macro Precision | Macro Recall | Macro F1 | Weighted F1 | Inference Latency | Model Size | Train Time |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1D Deep CNN** | Raw 9-Ch Waveforms | **98.93%** | **0.9910** | **0.9893** | **0.9899** | **0.9893** | 0.150 ms / win | **0.40 MB** | 54.24 s |
+| **Random Forest** | 204 Engineered Feats | **97.72%** | 0.9787 | 0.9753 | 0.9764 | 0.9771 | **0.040 ms / win** | 6.06 MB | 6.24 s |
+| **SVM (RBF Kernel)** | 204 Scaled Feats | **96.36%** | 0.9659 | 0.9607 | 0.9620 | 0.9637 | 0.280 ms / win | 2.27 MB | **2.92 s** |
+
+### B. Final Frozen Test-Set Benchmark (2,947 Windows, 9 Unseen Subjects)
+*Completely untouched held-out evaluation across 9 unseen participants.*
+
+| Model Architecture | Input Modality | Test Accuracy | Macro Precision | Macro Recall | Macro F1 | Weighted F1 | Test Latency | Model Size | Trainable Params |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **1D Deep CNN** | Raw 9-Ch Waveforms | **93.15%** | **0.9329** | **0.9325** | **0.9326** | **0.9312** | 0.173 ms / win | **0.40 MB** | 102,598 |
+| **SVM (RBF Kernel)** | 204 Scaled Feats | **92.16%** | 0.9226 | 0.9207 | 0.9212 | 0.9214 | 0.266 ms / win | 2.27 MB | Non-param |
+| **Random Forest** | 204 Engineered Feats | **91.62%** | 0.9171 | 0.9140 | 0.9149 | 0.9159 | **0.035 ms / win** | 6.06 MB | Non-param |
 
 ---
 
-## 9. Visualizations Generated
+## 9. Visualizations and Artifacts Generated
 
 | Visualization | Description | Figure Path |
-|:---|:---|:---|
-| **Class Distribution** | Train vs test windows across all 6 activity classes | `reports/figures/activity_distribution.png` |
-| **Participant Distribution** | Window frequency per subject with partition tags | `reports/figures/participant_distribution.png` |
-| **Accelerometer Signals** | Multi-axis waveform traces for representative activities | `reports/figures/accelerometer_representative_activities.png` |
-| **Gyroscope Signals** | Angular velocity signatures during dynamic motion | `reports/figures/gyroscope_representative_activities.png` |
-| **Stationary vs Dynamic** | Comparison of static posture vs gait kinetics | `reports/figures/stationary_vs_dynamic_comparison.png` |
-| **Feature Correlation** | Correlation heatmap across 9 inertial channels | `reports/figures/sensor_feature_correlation.png` |
-| **Amplitude Distributions** | Kernel density distributions for sensor channels | `reports/figures/signal_amplitude_distributions.png` |
+| :--- | :--- | :--- |
+| **RF Feature Importance** | Top 20 MDI features across 204 engineered dimensions | `reports/figures/rf_feature_importance.png` |
+| **CNN Validation Matrix** | Normalized confusion matrix for 1D CNN on validation split | `reports/figures/cnn_confusion_matrix.png` |
+| **CNN Final Test Matrix** | Normalized confusion matrix for 1D CNN on 2,947 test windows | `reports/figures/test_cnn_confusion_matrix.png` |
+| **RF Final Test Matrix** | Normalized confusion matrix for Random Forest on test set | `reports/figures/test_rf_confusion_matrix.png` |
+| **SVM Final Test Matrix** | Normalized confusion matrix for SVM on test set | `reports/figures/test_svm_confusion_matrix.png` |
+| **Accuracy Comparison** | Comparative bar chart of validation accuracy across models | `reports/figures/model_accuracy_comparison.png` |
+| **Macro F1 Comparison** | Comparative bar chart of validation Macro F1 across models | `reports/figures/macro_f1_comparison.png` |
+| **Training Duration** | Comparison of model training runtimes | `reports/figures/training_time_comparison.png` |
+| **Inference Latency** | Per-window inference latency comparison (ms / 2.56s window) | `reports/figures/inference_latency_comparison.png` |
 
 ---
 
 ## 10. Automated Testing Results
 
-All 29 automated tests execute cleanly with `pytest`:
+All 44 automated tests execute cleanly with `pytest`:
 ```
 ============================= test session starts =============================
 platform win32 -- Python 3.14.3, pytest-9.2.0, pluggy-1.7.0
 rootdir: D:\Projects\Wearable-Sensor-Platform\imu-human-activity-recognition-ml
 configfile: pytest.ini
-collected 29 items
+testpaths: tests
+plugins: anyio-4.16.0, platformdirs-4.14.8
+collected 44 items
 
-tests/test_download.py ...........                                       [ 20%]
-tests/test_end_to_end_pipeline.py ...                                   [ 31%]
-tests/test_loaders.py .....                                             [ 48%]
-tests/test_preprocessing.py .....                                       [ 65%]
-tests/test_simulation.py .....                                          [ 82%]
-tests/test_validation.py .....                                          [100%]
+tests\test_download.py ......                                            [ 13%]
+tests\test_end_to_end_pipeline.py ...                                    [ 20%]
+tests\test_evaluation.py ..                                              [ 25%]
+tests\test_feature_engineering.py ......                                 [ 38%]
+tests\test_loaders.py .....                                              [ 50%]
+tests\test_models.py ....                                                [ 59%]
+tests\test_preprocessing.py .....                                        [ 70%]
+tests\test_simulation.py .....                                           [ 81%]
+tests\test_splitting.py ...                                              [ 88%]
+tests\test_validation.py .....                                           [100%]
 
-============================= 29 passed in 4.59s ==============================
+======================= 44 passed, 1 warning in 11.97s ========================
 ```
 
 ---
@@ -250,12 +277,12 @@ tests/test_validation.py .....                                          [100%]
 1. **Pre-segmented and Filtered Windows:** Signals are pre-filtered with a 0.3 Hz Butterworth filter and segmented into 128-sample windows. They do not represent raw unsegmented continuous ADC data.
 2. **Waist Placement Only:** Data was recorded strictly from a waist-mounted smartphone pouch; kinematics differ from wrist-worn wearables.
 3. **Controlled Protocol:** Activities were performed under scripted laboratory guidance rather than free-living unconstrained behavior.
+4. **No Claim of Hardware Deployment:** Experiments are validated on standardized benchmark datasets; no physical microcontroller or custom sensor PCB fabrication is claimed.
 
 ---
 
-## 12. Planned Day 2 Activities
+## 12. Project Roadmap
 
-- **Feature Engineering:** Extract domain-specific temporal, statistical, and spectral features (FFT spectral energy, peak frequencies, wavelet coefficients, signal vector magnitude).
-- **Baseline Machine Learning Classifiers:** Implement Random Forest, Gradient Boosted Trees (LightGBM/XGBoost), and Support Vector Machines on engineered features.
-- **Deep Learning Architectures:** Build 1D-CNN and Bi-LSTM architectures for end-to-end classification on the raw `(N, 128, 9)` tensors.
-- **Evaluation Framework:** Implement per-class precision, recall, F1-score, confusion matrices, and ROC/PR curves under subject-wise cross-validation.
+- [x] **Day 1: Data Engineering & Foundation Pipeline** (Automated ingestion, tensor stacking, train-only normalization, exploration report, 29 passing tests).
+- [x] **Day 2: Feature Engineering & Model Evaluation** (204 features, subject-wise splitting, Random Forest, SVM, PyTorch 1D CNN, frozen test evaluation, 44 passing tests).
+- [ ] **Day 3: Model Optimization & Embedded Deployment Simulation** (Quantization to INT8/FP16, ONNX export, micro-controller latency profiling, real-time streaming pipeline emulation).
