@@ -191,21 +191,51 @@ def plot_model_comparisons(df: pd.DataFrame, save_dir: Path | str) -> None:
 
 
 def run_validation_comparison() -> pd.DataFrame:
-    """Evaluate and compare all trained models on the subject-wise validation set."""
+    """Evaluate and compare all trained models on the leak-free subject-wise validation set."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     repo_root = Path(__file__).resolve().parent.parent.parent
 
-    # Load data
-    X_raw = np.load(repo_root / "data" / "processed" / "X_train.npy")
-    X_feat = np.load(repo_root / "data" / "processed" / "X_train_features.npy")
+    # Load unscaled raw data and labels
+    raw_path = repo_root / "data" / "processed" / "X_train_raw.npy"
+    if not raw_path.exists():
+        from src.data.load_dataset import load_full_split, resolve_dataset_dir
+        base_dir = resolve_dataset_dir()
+        X_raw, _, _, _ = load_full_split(base_dir, split="train", load_features=False)
+        np.save(raw_path, X_raw.astype(np.float32))
+    else:
+        X_raw = np.load(raw_path)
+
     y = np.load(repo_root / "data" / "processed" / "y_train.npy")
     subjects = np.load(repo_root / "data" / "processed" / "subject_train.npy")
 
-    # Splits
-    split_raw = subject_wise_train_val_split(X_raw, y, subjects, val_subjects=[3, 11, 17, 27])
-    split_feat = subject_wise_train_val_split(X_feat, y, subjects, val_subjects=[3, 11, 17, 27])
+    # Leak-free subject-wise splits & feature extraction
+    from src.data.splitting import (
+        prepare_leak_free_train_val_tensors,
+        prepare_leak_free_train_val_features,
+    )
 
-    y_val = split_raw.y_val
+    (
+        X_train_scaled,
+        _,
+        X_val_scaled,
+        y_val,
+        _,
+        split,
+    ) = prepare_leak_free_train_val_tensors(
+        X_raw, y, subjects, val_subjects=[3, 11, 17, 27]
+    )
+
+    (
+        X_train_feat,
+        _,
+        X_val_feat,
+        _,
+        _,
+        _,
+    ) = prepare_leak_free_train_val_features(
+        X_raw, y, subjects, val_subjects=[3, 11, 17, 27]
+    )
+
     fig_dir = repo_root / "reports" / "figures"
     fig_dir.mkdir(parents=True, exist_ok=True)
 
@@ -216,7 +246,7 @@ def run_validation_comparison() -> pd.DataFrame:
     logger.info("Evaluating Random Forest from %s...", rf_path.name)
     rf = RandomForestHAR.load(rf_path)
     t0 = time.perf_counter()
-    rf_preds = rf.predict(split_feat.X_val)
+    rf_preds = rf.predict(X_val_feat)
     rf_latency = (time.perf_counter() - t0) * 1000.0 / len(y_val)
     rf_size_mb = rf_path.stat().st_size / (1024 * 1024)
 
@@ -233,7 +263,7 @@ def run_validation_comparison() -> pd.DataFrame:
     plot_confusion_matrix(
         y_val,
         rf_preds,
-        title="Random Forest: Validation Confusion Matrix",
+        title="Random Forest: Validation Confusion Matrix (Leak-Free)",
         save_path=fig_dir / "rf_confusion_matrix.png",
     )
 
@@ -242,7 +272,7 @@ def run_validation_comparison() -> pd.DataFrame:
     logger.info("Evaluating SVM from %s...", svm_path.name)
     svm = SVMHAR.load(svm_path)
     t0 = time.perf_counter()
-    svm_preds = svm.predict(split_feat.X_val)
+    svm_preds = svm.predict(X_val_feat)
     svm_latency = (time.perf_counter() - t0) * 1000.0 / len(y_val)
     svm_size_mb = svm_path.stat().st_size / (1024 * 1024)
 
@@ -259,7 +289,7 @@ def run_validation_comparison() -> pd.DataFrame:
     plot_confusion_matrix(
         y_val,
         svm_preds,
-        title="SVM: Validation Confusion Matrix",
+        title="SVM: Validation Confusion Matrix (Leak-Free)",
         save_path=fig_dir / "svm_confusion_matrix.png",
     )
 
@@ -268,7 +298,7 @@ def run_validation_comparison() -> pd.DataFrame:
     logger.info("Evaluating 1D CNN from %s...", cnn_path.name)
     cnn = CNN1DHAR.load(cnn_path, device="cpu")
     t0 = time.perf_counter()
-    cnn_preds = cnn.predict(split_raw.X_val)
+    cnn_preds = cnn.predict(X_val_scaled)
     cnn_latency = (time.perf_counter() - t0) * 1000.0 / len(y_val)
     cnn_size_mb = cnn_path.stat().st_size / (1024 * 1024)
 
@@ -285,7 +315,7 @@ def run_validation_comparison() -> pd.DataFrame:
     plot_confusion_matrix(
         y_val,
         cnn_preds,
-        title="1D CNN: Validation Confusion Matrix",
+        title="1D CNN: Validation Confusion Matrix (Leak-Free)",
         save_path=fig_dir / "cnn_confusion_matrix.png",
     )
 
@@ -308,8 +338,10 @@ def run_validation_comparison() -> pd.DataFrame:
     df = df[lead_cols + other_cols]
 
     csv_path = repo_root / "reports" / "model_comparison.csv"
+    corrected_csv_path = repo_root / "reports" / "corrected_validation_comparison.csv"
     df.to_csv(csv_path, index=False)
-    logger.info("Exported validation comparison table to %s", csv_path)
+    df.to_csv(corrected_csv_path, index=False)
+    logger.info("Exported validation comparison table to %s and %s", csv_path.name, corrected_csv_path.name)
 
     # Generate comparison figures
     plot_model_comparisons(df, save_dir=fig_dir)

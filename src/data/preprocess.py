@@ -180,8 +180,11 @@ def run_preprocessing_pipeline(
         X_test_processed = X_test_raw.astype(dtype)
         scaler_stats = {}
 
-    # 5. Save numpy binary outputs
-    logger.info("Saving processed numpy tensors...")
+    # 5. Save numpy binary outputs (including unscaled raw arrays for zero-leakage splits)
+    logger.info("Saving processed and unscaled raw numpy tensors...")
+    np.save(out_dir / "X_train_raw.npy", X_train_raw.astype(dtype))
+    np.save(out_dir / "X_test_raw.npy", X_test_raw.astype(dtype))
+
     np.save(out_dir / "X_train.npy", X_train_processed)
     np.save(out_dir / "y_train.npy", y_train_mapped)
     np.save(out_dir / "subject_train.npy", subj_train)

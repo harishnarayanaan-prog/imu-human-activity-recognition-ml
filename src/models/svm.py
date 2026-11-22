@@ -100,42 +100,59 @@ class SVMHAR:
 
 
 def main() -> None:
-    """Train and evaluate SVM on subject-wise validation split."""
+    """Train and evaluate SVM on leak-free subject-wise validation split."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     repo_root = Path(__file__).resolve().parent.parent.parent
 
-    # Load engineered features and labels
-    X_feat = np.load(repo_root / "data" / "processed" / "X_train_features.npy")
+    # Load unscaled raw windows and labels
+    raw_path = repo_root / "data" / "processed" / "X_train_raw.npy"
+    if not raw_path.exists():
+        from src.data.load_dataset import load_full_split, resolve_dataset_dir
+        base_dir = resolve_dataset_dir()
+        X_raw, _, _, _ = load_full_split(base_dir, split="train", load_features=False)
+        np.save(raw_path, X_raw.astype(np.float32))
+    else:
+        X_raw = np.load(raw_path)
+
     y = np.load(repo_root / "data" / "processed" / "y_train.npy")
     subjects = np.load(repo_root / "data" / "processed" / "subject_train.npy")
 
-    # Subject-wise train/val split
-    split = subject_wise_train_val_split(
-        X_feat, y, subjects, val_subjects=[3, 11, 17, 27]
+    # Leak-free subject-wise split & feature extraction (scaler fitted ONLY on internal train)
+    from src.data.splitting import prepare_leak_free_train_val_features
+
+    (
+        X_train_feat,
+        y_train,
+        X_val_feat,
+        y_val,
+        val_scaler,
+        split,
+    ) = prepare_leak_free_train_val_features(
+        X_raw, y, subjects, val_subjects=[3, 11, 17, 27]
     )
 
-    logger.info("Fitting SVM (RBF kernel, C=10.0) on %d train samples...", len(split.X_train))
+    logger.info("Fitting SVM (RBF kernel, C=10.0) on %d leak-free train samples...", len(X_train_feat))
     svm = SVMHAR(C=10.0, kernel="rbf", gamma="scale", probability=True, random_state=42)
-    svm.fit(split.X_train, split.y_train)
+    svm.fit(X_train_feat, y_train)
     logger.info("SVM training completed in %.2fs", svm.training_time_sec_)
 
     # Measure inference latency on validation set
     t0 = time.perf_counter()
-    y_pred = svm.predict(split.X_val)
-    val_latency_ms = (time.perf_counter() - t0) * 1000.0 / len(split.X_val)
+    y_pred = svm.predict(X_val_feat)
+    val_latency_ms = (time.perf_counter() - t0) * 1000.0 / len(y_val)
 
-    val_acc = accuracy_score(split.y_val, y_pred)
-    val_macro_f1 = f1_score(split.y_val, y_pred, average="macro")
-    val_weighted_f1 = f1_score(split.y_val, y_pred, average="weighted")
+    val_acc = accuracy_score(y_val, y_pred)
+    val_macro_f1 = f1_score(y_val, y_pred, average="macro")
+    val_weighted_f1 = f1_score(y_val, y_pred, average="weighted")
 
-    logger.info("=== SVM Validation Results ===")
+    logger.info("=== SVM Validation Results (Leak-Free Pipeline) ===")
     logger.info("Validation Accuracy:    %.4f (%.2f%%)", val_acc, val_acc * 100)
     logger.info("Validation Macro F1:    %.4f", val_macro_f1)
     logger.info("Validation Weighted F1: %.4f", val_weighted_f1)
     logger.info("Per-sample Latency:     %.3f ms/window", val_latency_ms)
 
     print("\nDetailed Classification Report:")
-    print(classification_report(split.y_val, y_pred, target_names=ACTIVITY_NAMES, digits=4))
+    print(classification_report(y_val, y_pred, target_names=ACTIVITY_NAMES, digits=4))
 
     # Save model
     model_path = repo_root / "models" / "svm.joblib"

@@ -66,3 +66,17 @@ The protocol is implemented in `src/data/splitting.py`:
 - `subject_wise_train_val_split()`: Generates disjoint train/val splits and verifies disjointness via `verify_disjointness()`.
 - `SubjectWiseKFold`: Facilitates 5-fold cross-validation with subject grouping.
 - Any attempt to introduce subject leakage raises an immediate `RuntimeError`.
+
+---
+
+## 5. Day 2.1 Methodology Audit and Preprocessing Leakage Correction
+
+During the Day 2.1 audit, a critical vulnerability was identified and resolved:
+- **Prior Vulnerability:** `ChannelWiseStandardScaler` had previously been fitted across the entire official training set (21 subjects) before the internal validation split was made. This allowed validation participants (`[3, 11, 17, 27]`) to leak statistical moments ($\mu, \sigma$) into the training representation.
+- **Corrected Methodology:**
+  1. Splitting is performed directly on **unscaled raw sensor windows** (`X_train_raw.npy`).
+  2. The validation scaler is fitted **strictly on the 17 internal training subjects** (5,951 windows).
+  3. Validation windows (1,401 windows) are normalized using the frozen internal training parameters.
+  4. Features are extracted independently from the leak-free scaled partitions.
+  5. The final test models are retrained on all 21 official training subjects with a scaler fitted on official training data only.
+- For complete audit details and empirical parameter shifts, refer to `reports/methodology_correction_report.md`.

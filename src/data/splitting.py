@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 import numpy as np
 from sklearn.model_selection import GroupShuffleSplit, GroupKFold
 
@@ -137,3 +137,82 @@ class SubjectWiseKFold:
     def split(self, X: np.ndarray, y: np.ndarray, subjects: np.ndarray):
         """Yield (train_indices, val_indices) tuple for each fold with zero subject overlap."""
         return self.gkf.split(X, y, groups=subjects)
+
+
+def prepare_leak_free_train_val_tensors(
+    X_raw: np.ndarray,
+    y: np.ndarray,
+    subjects: np.ndarray,
+    val_subjects: Optional[Sequence[int]] = (3, 11, 17, 27),
+    random_seed: int = 42,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, Any, SplitResult]:
+    """Split raw sensor windows by subject and scale strictly using training-only statistics.
+
+    Returns
+    -------
+    X_train_scaled, y_train, X_val_scaled, y_val, scaler, split_result
+    """
+    from src.data.preprocess import ChannelWiseStandardScaler
+
+    # 1. Subject-wise split on unscaled raw windows
+    split = subject_wise_train_val_split(
+        X_raw, y, subjects, val_subjects=val_subjects, random_seed=random_seed
+    )
+
+    # 2. Fit scaler strictly on internal training partition
+    scaler = ChannelWiseStandardScaler()
+    scaler.fit(split.X_train)
+
+    # 3. Transform internal training and validation partitions
+    X_train_scaled = scaler.transform(split.X_train).astype(np.float32)
+    X_val_scaled = scaler.transform(split.X_val).astype(np.float32)
+
+    return (
+        X_train_scaled,
+        split.y_train,
+        X_val_scaled,
+        split.y_val,
+        scaler,
+        split,
+    )
+
+
+def prepare_leak_free_train_val_features(
+    X_raw: np.ndarray,
+    y: np.ndarray,
+    subjects: np.ndarray,
+    val_subjects: Optional[Sequence[int]] = (3, 11, 17, 27),
+    sampling_rate_hz: float = 50.0,
+    random_seed: int = 42,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, Any, SplitResult]:
+    """Extract features from windows normalized strictly on internal training statistics.
+
+    Returns
+    -------
+    X_train_feat, y_train, X_val_feat, y_val, scaler, split_result
+    """
+    from src.features.feature_engineering import IMUFeatureExtractor
+
+    (
+        X_train_scaled,
+        y_train,
+        X_val_scaled,
+        y_val,
+        scaler,
+        split,
+    ) = prepare_leak_free_train_val_tensors(
+        X_raw, y, subjects, val_subjects=val_subjects, random_seed=random_seed
+    )
+
+    extractor = IMUFeatureExtractor(sampling_rate_hz=sampling_rate_hz)
+    X_train_feat = extractor.transform(X_train_scaled)
+    X_val_feat = extractor.transform(X_val_scaled)
+
+    return (
+        X_train_feat,
+        y_train,
+        X_val_feat,
+        y_val,
+        scaler,
+        split,
+    )
