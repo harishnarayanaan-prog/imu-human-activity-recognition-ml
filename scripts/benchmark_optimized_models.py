@@ -244,9 +244,9 @@ def main() -> None:
         else:
             b1_runner, predictor = get_onnx_runner_and_predictor(m_path)
 
-        # 1. Latency benchmark
-        logger.info("Running Batch-1 real-time latency profiling (50 warm-up, 200 iterations)...")
-        lat_stats = benchmark_latency(b1_runner, dummy_batch1, warm_up=50, repetitions=200)
+        # 1. Latency benchmark (5 independent runs of 200 iterations = 1,000 timed samples)
+        logger.info("Running Batch-1 real-time latency profiling (50 warm-up, 5 runs of 200 iterations = 1000 total)...")
+        lat_stats = benchmark_latency(b1_runner, dummy_batch1, warm_up=50, repetitions=200, n_runs=5)
 
         # 2. Validation evaluation (1,401 samples)
         logger.info("Evaluating on internal validation set (1,401 samples)...")
@@ -289,6 +289,8 @@ def main() -> None:
             "test_acc_delta_pct": test_acc_delta,
             "latency_median_ms": lat_stats["median_latency_ms"],
             "latency_mean_ms": lat_stats["mean_latency_ms"],
+            "latency_std_ms": lat_stats["std_latency_ms"],
+            "inter_run_std_ms": lat_stats["inter_run_std_ms"],
             "latency_p95_ms": lat_stats["p95_latency_ms"],
             "latency_p99_ms": lat_stats["p99_latency_ms"],
             "throughput_windows_sec": lat_stats["throughput_windows_per_sec"],
@@ -329,11 +331,19 @@ def main() -> None:
     # Save benchmark execution details
     benchmark_details = {
         "benchmark_timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "warm_up_iterations": 50,
-        "timed_iterations": 200,
+        "measurement_function": "time.perf_counter()",
         "batch_size": 1,
+        "warm_up_iterations": 50,
+        "timed_iterations_per_run": 200,
+        "benchmark_runs": 5,
+        "total_timed_samples_per_model": 1000,
         "runtime_provider": "CPUExecutionProvider",
         "cpu_threads": torch.get_num_threads(),
+        "throughput_definition": "Total items processed / total elapsed iteration time (batch_size / mean_latency_sec)",
+        "statistical_caveat": (
+            "P99 latency estimates over 1,000 samples represent extreme tail percentiles "
+            "sensitive to OS scheduling jitter; evaluate alongside median latency and inter-run standard deviation."
+        ),
         "models_evaluated": [m["name"] for m in model_registry],
         "validation_samples_count": len(X_val_scaled),
         "test_samples_count": len(X_test_scaled),

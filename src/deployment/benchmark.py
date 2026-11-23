@@ -42,17 +42,19 @@ def benchmark_latency(
     input_sample: np.ndarray,
     warm_up: int = 50,
     repetitions: int = 200,
-) -> Dict[str, float]:
+    n_runs: int = 1,
+) -> Dict[str, Any]:
     """Measure inference latency and throughput for an arbitrary callable runner.
 
     Args:
         inference_fn: Callable accepting input_sample and returning model predictions/logits.
         input_sample: Array of shape (B, 9, 128) or (B, 128, 9).
         warm_up: Number of untimed warm-up iterations (default: 50).
-        repetitions: Number of timed benchmark iterations (default: 200).
+        repetitions: Number of timed benchmark iterations per run (default: 200).
+        n_runs: Number of independent benchmark repetitions to assess inter-run variance (default: 1).
 
     Returns:
-        Dict[str, float]: Detailed latency statistics in milliseconds and throughput in windows/sec.
+        Dict[str, Any]: Detailed latency statistics in milliseconds and throughput in windows/sec.
     """
     batch_size = input_sample.shape[0] if input_sample.ndim >= 2 else 1
 
@@ -60,15 +62,22 @@ def benchmark_latency(
     for _ in range(warm_up):
         _ = inference_fn(input_sample)
 
-    # 2. Timed benchmark phase
-    latencies_sec: List[float] = []
-    for _ in range(repetitions):
-        t0 = time.perf_counter()
-        _ = inference_fn(input_sample)
-        t1 = time.perf_counter()
-        latencies_sec.append(t1 - t0)
+    # 2. Timed benchmark phase across n_runs
+    all_latencies_sec: List[float] = []
+    run_means_ms: List[float] = []
 
-    latencies_ms = np.array(latencies_sec) * 1000.0
+    for _ in range(n_runs):
+        run_latencies_sec: List[float] = []
+        for _ in range(repetitions):
+            t0 = time.perf_counter()
+            _ = inference_fn(input_sample)
+            t1 = time.perf_counter()
+            run_latencies_sec.append(t1 - t0)
+        all_latencies_sec.extend(run_latencies_sec)
+        run_means_ms.append(float(np.mean(run_latencies_sec) * 1000.0))
+
+    latencies_ms = np.array(all_latencies_sec) * 1000.0
+    total_samples = len(all_latencies_sec)
 
     mean_ms = float(np.mean(latencies_ms))
     median_ms = float(np.median(latencies_ms))
@@ -79,12 +88,18 @@ def benchmark_latency(
     max_ms = float(np.max(latencies_ms))
     std_ms = float(np.std(latencies_ms))
 
-    # Throughput in processed windows per second
-    throughput = float((batch_size * repetitions) / np.sum(latencies_sec))
+    inter_run_mean_ms = float(np.mean(run_means_ms))
+    inter_run_std_ms = float(np.std(run_means_ms)) if n_runs > 1 else 0.0
+
+    # Consistent throughput definition: total items processed divided by total elapsed iteration time
+    total_elapsed_sec = float(np.sum(all_latencies_sec))
+    throughput = float((batch_size * total_samples) / total_elapsed_sec) if total_elapsed_sec > 0 else 0.0
 
     return {
         "warm_up_iterations": warm_up,
         "timed_iterations": repetitions,
+        "n_runs": n_runs,
+        "total_timed_samples": total_samples,
         "batch_size": batch_size,
         "mean_latency_ms": round(mean_ms, 4),
         "median_latency_ms": round(median_ms, 4),
@@ -94,7 +109,12 @@ def benchmark_latency(
         "min_latency_ms": round(min_ms, 4),
         "max_latency_ms": round(max_ms, 4),
         "std_latency_ms": round(std_ms, 4),
+        "inter_run_std_ms": round(inter_run_std_ms, 4),
         "throughput_windows_per_sec": round(throughput, 2),
+        "statistical_caveat": (
+            "P99 latency estimates over finite samples represent extreme tail percentiles "
+            "sensitive to OS scheduling jitter; evaluate alongside median latency and inter-run standard deviation."
+        ),
     }
 
 

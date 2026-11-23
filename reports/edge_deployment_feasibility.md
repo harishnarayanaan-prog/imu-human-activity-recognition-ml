@@ -42,18 +42,23 @@ xychart-beta
 
 ---
 
-## 3. Runtime RAM Requirements & Working Buffer Estimation
+## 3. Runtime RAM Requirements & Working Buffer Estimation (Analytical Modeling)
 
-For an embedded microcontroller without virtual memory or dynamic swap, total Static Random Access Memory (SRAM) is the most critical constraint. Runtime RAM comprises three components:
-1. **Raw Sensor Sliding Window Buffer:** Stores streaming sensor samples.
-2. **Ping-Pong Activation Buffer:** Working scratchpad holding intermediate layer activations.
-3. **Model Weight Residency:** In microcontrollers supporting XIP (e.g., QSPI Flash), weights execute in-place; otherwise, weights must be mirrored to RAM.
+For an embedded microcontroller without virtual memory or dynamic swap, total Static Random Access Memory (SRAM) is the most critical constraint. Runtime RAM comprises six distinct components:
+1. **Raw Sensor Sliding Window Buffer:** Stores streaming sensor samples across 9 channels.
+2. **Ping-Pong Activation Buffers:** Working scratchpad holding alternating intermediate layer activations.
+3. **Operator Scratchpad Buffers:** Intermediate workspaces required for convolution (e.g. `im2col` or filter transformation in CMSIS-NN / TFLite Micro).
+4. **Quantization Parameter Storage:** Per-tensor/per-channel scale multipliers, zero-points, and bias vectors.
+5. **Runtime Tensor Arena Overhead:** Memory alignment pads (16-byte aligned) and framework descriptors (`TfLiteTensor`, `TfLiteNode`).
+6. **Application Stack & RTOS Task Context:** Thread stack allocated for the inference task in FreeRTOS or bare-metal environment.
 
-### 3.1 Raw Sensor Sliding Window Buffer Math
+### 3.1 Sensor Window Buffer Math
 At a nominal sampling rate of 50 Hz, each sliding window spans 128 timesteps (2.56 seconds) across 9 sensor channels:
-$$\text{Buffer Size} = 128 \text{ samples} \times 9 \text{ channels} \times 4 \text{ bytes/sample (Float32)} = 4,608 \text{ bytes} \approx 4.50 \text{ KB}$$
-If stored in 16-bit integer ADC raw counts:
-$$\text{Raw ADC Buffer Size} = 128 \times 9 \times 2 \text{ bytes} = 2,304 \text{ bytes} \approx 2.25 \text{ KB}$$
+$$\text{Buffer Size (Float32)} = 128 \text{ samples} \times 9 \text{ channels} \times 4 \text{ bytes/sample} = 4,608 \text{ bytes} \approx 4.50 \text{ KB}$$
+If buffered in 16-bit integer ADC raw counts:
+$$\text{Buffer Size (Int16 ADC)} = 128 \times 9 \times 2 \text{ bytes} = 2,304 \text{ bytes} \approx 2.25 \text{ KB}$$
+If quantized to 8-bit integer:
+$$\text{Buffer Size (Int8)} = 128 \times 9 \times 1 \text{ bytes} = 1,152 \text{ bytes} \approx 1.13 \text{ KB}$$
 
 ### 3.2 Peak Activation Buffer Math (Layer-by-Layer)
 In a feedforward convolutional network, memory can be reused across layers using an alternating double buffer (ping-pong scratchpad):
@@ -71,21 +76,33 @@ In a feedforward convolutional network, memory can be reused across layers using
 $$\text{Peak Activation Ping-Pong Buffer (Float32)} = 16.00 \text{ KB} + 16.00 \text{ KB} = 32.00 \text{ KB}$$
 $$\text{Peak Activation Ping-Pong Buffer (INT8)} = 4.00 \text{ KB} + 4.00 \text{ KB} = 8.00 \text{ KB}$$
 
-### 3.3 Total Working RAM Budget
-$$\text{Total Working SRAM (FP32)} = 4.50 \text{ KB (Input)} + 32.00 \text{ KB (Activations)} + 8.00 \text{ KB (Overhead)} \approx 44.50 \text{ KB}$$
-$$\text{Total Working SRAM (INT8)} = 1.13 \text{ KB (Input)} + 8.00 \text{ KB (Activations)} + 4.00 \text{ KB (Overhead)} \approx 13.13 \text{ KB}$$
+### 3.3 Operator Scratchpad & Runtime Overhead
+- **Operator Scratchpad (CMSIS-NN / TFLite Micro):** `arm_convolve_1x_s8` requires a matrix-multiplication scratch buffer proportional to $2 \times \text{in\_channels} \times \text{kernel\_size} = 2 \times 128 \times 5 = 1,280$ bytes ($\approx 1.25$ KB), extending to $\approx 2.50$ KB with SIMD unrolling.
+- **Quantization Parameters:** Scale multipliers, zero-points, and 32-bit bias terms across 3 Conv and 2 Dense layers occupy $\approx 0.30$ to $0.50$ KB.
+- **Runtime Tensor Arena Overhead:** Framework control headers, tensor metadata structures, and 16-byte alignment pads require $\approx 2.00$ to $4.00$ KB.
+- **Application Task Stack:** A dedicated FreeRTOS task stack for sensor acquisition and inference requires $\approx 2.00$ to $4.00$ KB.
+
+### 3.4 Total Working Memory Budget (Preliminary Analytical Estimates)
+- **Minimum Inference Arena (INT8):** $4.50\text{ KB (Input)} + 8.00\text{ KB (Activations)} + 1.50\text{ KB (Scratchpad)} + 0.50\text{ KB (Quant Params)} + 2.00\text{ KB (Arena Overhead)} \approx \mathbf{16.50\text{ KB}}$.
+- **Full System Working SRAM (INT8 + RTOS):** $16.50\text{ KB} + 3.00\text{ KB (Task Stack)} \approx \mathbf{19.50\text{ to } 24.00\text{ KB}}$.
+- **Minimum Inference Arena (FP32):** $4.50\text{ KB (Input)} + 32.00\text{ KB (Activations)} + 3.00\text{ KB (Overhead)} \approx \mathbf{39.50\text{ to } 44.50\text{ KB}}$.
+
+> [!NOTE]
+> **Status:** Preliminary analytical estimate. Exact SRAM requirements depend on target C compiler optimization level (`-Os` vs `-O3`), struct alignment, and runtime framework selection.
 
 ---
 
 ## 4. Hardware Feasibility Matrix Across Target Embedded SoCs
 
-| Target Embedded Architecture | Typical Processor Core & Frequency | Typical SRAM (RAM) | Typical Flash Storage | Weight XIP Supported? | Estimated Feasibility Verdict | Key Engineering Constraints |
+All feasibility verdicts represent **analytical engineering estimates** based on memory math, CPU instruction capabilities, and clock frequency. **No physical microcontroller flashing or bare-metal execution is claimed.**
+
+| Target Architecture | Processor Core & Frequency | Typical SRAM | Typical Flash | Weight Storage | Feasibility Verdict (Analytical) | Key Constraints & Engineering Assessment |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Espressif ESP32-S3** | Dual Xtensa LX7 @ 240 MHz (with Vector Ext) | 512 KB Internal | 4 MB – 16 MB QSPI | Yes (Flash XIP) | **High Feasibility** | Abundant RAM (512 KB vs. 13 KB required). Vector instructions accelerate 1D convolutions. |
-| **Nordic nRF52840** | ARM Cortex-M4F @ 64 MHz (with FPU) | 256 KB | 1 MB Internal | Yes | **High Feasibility** | Primary wearable BLE SoC. INT8 model consumes 12% of Flash; working RAM consumes 5% of SRAM. |
-| **STM32F401 (BlackPill)** | ARM Cortex-M4 @ 84 MHz | 64 KB | 256 KB | Yes | **Moderate Feasibility** | INT8 model consumes 48% of Flash. Working SRAM (13 KB) leaves ~50 KB for RTOS and BLE stack. |
-| **Raspberry Pi Pico (RP2040)**| Dual ARM Cortex-M0+ @ 133 MHz (No FPU) | 264 KB | 2 MB External | Yes | **High Feasibility (INT8 Only)** | Lack of FPU makes FP32 slow; INT8 integer arithmetic is required. |
-| **Microchip ATmega328P** | 8-bit AVR @ 16 MHz | 2 KB | 32 KB | No | **Impossible** | 2 KB RAM cannot accommodate 13 KB activation buffer; 32 KB Flash cannot hold 124 KB model. |
+| **Espressif ESP32-S3** | Dual Xtensa LX7 @ 240 MHz (with Vector Ext) | 512 KB Internal | 4 MB – 16 MB QSPI | Flash XIP | **Highly Feasible (Estimated)** | Abundant RAM (512 KB vs. ~20 KB required, ~96% free). Vector instructions accelerate 1D convolutions. |
+| **Nordic nRF52840** | ARM Cortex-M4F @ 64 MHz (with FPU) | 256 KB | 1 MB Internal | Flash XIP | **Highly Feasible (Estimated)** | Industry standard wearable BLE SoC. INT8 model consumes ~12% of Flash; working SRAM consumes ~8% of RAM. |
+| **STM32F401 (BlackPill)** | ARM Cortex-M4 @ 84 MHz | 64–96 KB | 256–512 KB | Flash XIP | **Feasible (Estimated)** | Working SRAM (~20 KB) leaves 44–76 KB for RTOS and peripheral drivers. Flash consumes ~210 KB total. |
+| **Raspberry Pi RP2040**| Dual ARM Cortex-M0+ @ 133 MHz (No FPU) | 264 KB | 2 MB External | Flash XIP | **Feasible INT8 Only (Estimated)** | Lack of hardware FPU makes FP32 unviable; INT8 integer arithmetic is required. |
+| **Microchip ATmega328P** | 8-bit AVR @ 16 MHz | 2 KB | 32 KB | Internal Flash | **Infeasible (Analytical)** | 2 KB RAM cannot accommodate 16–20 KB buffer; 32 KB Flash cannot hold 124 KB model. |
 
 ---
 
@@ -95,18 +112,27 @@ In edge wearable systems, the nominal deadline between inference triggers is det
 $$\text{Window Duration} = \frac{128 \text{ samples}}{50 \text{ Hz}} = 2.56 \text{ seconds}$$
 $$\text{Stride Step Size} = \frac{64 \text{ samples}}{50 \text{ Hz}} = 1.28 \text{ seconds} = 1,280 \text{ ms}$$
 
-### Empirical Latency vs. Deadline Comparison (x86-64 Software Benchmark)
+### Empirical Latency vs. Deadline Comparison (Host x86-64 CPU Benchmark)
 
-| Model Variant | Median Latency | P95 Latency | Max Latency | Nominal Deadline | Processing Margin | Throughput |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **ONNX FP32** | 0.1741 ms | 0.2877 ms | 0.4560 ms | 1,280 ms | **> 4,400× faster than deadline** | 4,315 win/s |
-| **ONNX FP16** | 0.1265 ms | 0.2111 ms | 0.3245 ms | 1,280 ms | **> 6,000× faster than deadline** | 7,194 win/s |
-| **ONNX INT8 (Static QDQ)**| 0.1212 ms | 0.2439 ms | 0.5254 ms | 1,280 ms | **> 5,200× faster than deadline** | 7,089 win/s |
-| **ONNX INT8 (Dynamic)**| 0.7443 ms | 1.5456 ms | 1.8458 ms | 1,280 ms | **> 800× faster than deadline** | 1,101 win/s |
+*Evaluated across 1,000 timed samples (5 independent runs of 200 iterations each with single-window $B=1$ input):*
+
+| Model Variant | Median Latency | Mean Latency | Latency Std | Inter-Run Std | P95 Latency | P99 Latency | Nominal Deadline | Processing Margin | Throughput |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **ONNX FP32** | 0.1600 ms | 0.1783 ms | 0.0648 ms | 0.0201 ms | 0.2665 ms | 0.4275 ms | 1,280 ms | **> 7,000× faster** | 5,609 win/s |
+| **ONNX FP16** | 0.1443 ms | 0.1553 ms | 0.0708 ms | 0.0100 ms | 0.2155 ms | 0.2762 ms | 1,280 ms | **> 8,000× faster** | 6,437 win/s |
+| **ONNX INT8 (Static QDQ)**| 0.0995 ms | 0.1099 ms | 0.0254 ms | 0.0048 ms | 0.1591 ms | 0.2053 ms | 1,280 ms | **> 11,000× faster** | 9,097 win/s |
+| **ONNX INT8 (Dynamic)**| 1.1664 ms | 1.1054 ms | 0.2855 ms | 0.0545 ms | 1.5799 ms | 1.7044 ms | 1,280 ms | **> 1,000× faster** | 905 win/s |
+| **PyTorch FP32 Baseline**| 0.6473 ms | 0.7122 ms | 0.1841 ms | 0.0360 ms | 1.0713 ms | 1.3855 ms | 1,280 ms | **> 1,700× faster** | 1,404 win/s |
 
 > [!NOTE]
 > **Observation on Dynamic vs. Static INT8 Latency:**
-> Dynamic INT8 quantization is approximately $6\times$ slower than Static QDQ on small batch-1 sliding windows. This is because dynamic quantization must dynamically compute scale and zero-point parameters across activation tensors during every inference pass, introducing significant scalar overhead on micro-batches. Static QDQ uses pre-calibrated scale parameters, avoiding this runtime computation.
+> Dynamic INT8 quantization is approximately $10\times$ slower than Static QDQ on single batch-1 sliding windows. Dynamic quantization must dynamically compute scale and zero-point parameters across activation tensors during every inference pass, introducing significant scalar overhead on micro-batches. Static QDQ uses pre-calibrated scale parameters, avoiding this runtime computation.
+>
+> **Statistical Caveat on P99 Estimates:**
+> P99 latency estimates over 1,000 samples represent extreme tail percentiles sensitive to background OS scheduling jitter and CPU power state transitions. They should be evaluated alongside median latency and inter-run standard deviation rather than as rigid population percentiles.
+>
+> **Observation on INT8 Test Accuracy:**
+> Static INT8 QDQ demonstrated a slight increase in test accuracy from 93.08% to 93.18% (+3 correct windows out of 2,947, primarily in the SITTING and STANDING classes). This difference represents a descriptive observation on this held-out set rather than evidence of superior generalization. The official test dataset was never accessed during calibration or optimization (which strictly used internal validation subjects [3, 11, 17, 27]). The +0.10% delta is within the expected margin of variation for quantization noise on boundary decision vectors and does not prove superior generalization over FP32.
 
 ---
 

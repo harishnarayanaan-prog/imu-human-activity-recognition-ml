@@ -1,10 +1,15 @@
 {
-  "benchmark_timestamp": "2026-11-23T18:21:02Z",
-  "warm_up_iterations": 50,
-  "timed_iterations": 200,
+  "benchmark_timestamp": "2026-11-23T18:43:54Z",
+  "measurement_function": "time.perf_counter()",
   "batch_size": 1,
+  "warm_up_iterations": 50,
+  "timed_iterations_per_run": 200,
+  "benchmark_runs": 5,
+  "total_timed_samples_per_model": 1000,
   "runtime_provider": "CPUExecutionProvider",
   "cpu_threads": 4,
+  "throughput_definition": "Total items processed / total elapsed iteration time (batch_size / mean_latency_sec)",
+  "statistical_caveat": "P99 latency estimates over 1,000 samples represent extreme tail percentiles sensitive to OS scheduling jitter; evaluate alongside median latency and inter-run standard deviation.",
   "models_evaluated": [
     "PyTorch Baseline (FP32)",
     "ONNX (FP32)",

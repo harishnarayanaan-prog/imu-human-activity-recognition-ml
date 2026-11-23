@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
+import warnings
 
 import numpy as np
 import onnx
@@ -69,16 +70,19 @@ def export_pytorch_to_onnx(
     if try_dynamo:
         try:
             logger.info("Attempting PyTorch export with dynamo=True...")
-            torch.onnx.export(
-                net,
-                dummy_input,
-                str(output_path),
-                export_params=True,
-                input_names=["sensor_window"],
-                output_names=["activity_logits"],
-                dynamic_axes=dynamic_axes,
-                dynamo=True,
-            )
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message=r".*dynamic_axes.*")
+                warnings.filterwarnings("ignore", category=DeprecationWarning, module=r".*torch\.onnx.*")
+                torch.onnx.export(
+                    net,
+                    dummy_input,
+                    str(output_path),
+                    export_params=True,
+                    input_names=["sensor_window"],
+                    output_names=["activity_logits"],
+                    dynamic_axes=dynamic_axes,
+                    dynamo=True,
+                )
             exported = True
             logger.info("ONNX export with dynamo=True completed successfully.")
         except Exception as exc:

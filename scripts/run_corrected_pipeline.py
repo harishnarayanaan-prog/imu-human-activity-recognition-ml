@@ -294,7 +294,7 @@ def run_corrected_final_training(
         save_path=fig_dir / "test_rf_confusion_matrix.png",
     )
     print("\n--- Final Test Report: Random Forest ---")
-    print(classification_report(y_test, rf_test_preds, target_names=ACTIVITY_NAMES, digits=4))
+    print(classification_report(y_test, rf_test_preds, target_names=ACTIVITY_NAMES, digits=4, zero_division=0))
 
     # Final Model B: SVM (7,352 samples)
     logger.info("Training Final SVM on full official training set...")
@@ -322,7 +322,7 @@ def run_corrected_final_training(
         save_path=fig_dir / "test_svm_confusion_matrix.png",
     )
     print("\n--- Final Test Report: SVM (RBF) ---")
-    print(classification_report(y_test, svm_test_preds, target_names=ACTIVITY_NAMES, digits=4))
+    print(classification_report(y_test, svm_test_preds, target_names=ACTIVITY_NAMES, digits=4, zero_division=0))
 
     # Final Model C: 1D Deep CNN (7,352 samples)
     # Fixed epoch count validated upfront from the internal validation run.
@@ -376,7 +376,7 @@ def run_corrected_final_training(
         save_path=fig_dir / "test_cnn_confusion_matrix.png",
     )
     print("\n--- Final Test Report: 1D CNN ---")
-    print(classification_report(y_test, cnn_test_preds, target_names=ACTIVITY_NAMES, digits=4))
+    print(classification_report(y_test, cnn_test_preds, target_names=ACTIVITY_NAMES, digits=4, zero_division=0))
 
     # Assemble test summary DataFrame
     df_test = pd.DataFrame(results)

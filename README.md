@@ -63,7 +63,7 @@ flowchart LR
     E --> F["Time-Series ML / Deep Learning"]
 ```
 
-See [docs/architecture.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/docs/architecture.md) for detailed architectural blueprints.
+See [docs/architecture.md](docs/architecture.md) for detailed architectural blueprints.
 
 ---
 
@@ -140,7 +140,7 @@ imu-human-activity-recognition-ml/
 ### Setup Virtual Environment
 ```powershell
 # Navigate to workspace
-cd D:\Projects\Wearable-Sensor-Platform\imu-human-activity-recognition-ml
+cd imu-human-activity-recognition-ml
 
 # Create project-specific virtual environment
 python -m venv .venv
@@ -230,7 +230,7 @@ An ML methodology audit identified that in the initial Day 2 release, `ChannelWi
 3. **Frozen Transformation:** Validation windows (1,401 windows) are scaled using the frozen internal parameters.
 4. **Final Model Retraining:** Final models are retrained on the full official training partition (7,352 samples) with a scaler fitted on official training data, then evaluated on the 2,947 official test windows.
 
-Full audit documentation is available in [reports/methodology_correction_report.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/methodology_correction_report.md) and historical metrics are preserved in [reports/historical_day2_results.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/historical_day2_results.md).
+Full audit documentation is available in [reports/methodology_correction_report.md](reports/methodology_correction_report.md) and historical metrics are preserved in [reports/historical_day2_results.md](reports/historical_day2_results.md).
 
 ---
 
@@ -286,20 +286,21 @@ flowchart TD
 
 ### B. Precision & Optimization Benchmark (Official Test Set: 2,947 Windows)
 
-All metrics are empirical results gathered on physical CPU execution with ONNX Runtime 1.32.0:
+All metrics are empirical results gathered on physical CPU execution with ONNX Runtime 1.32.0 across 1,000 timed samples (5 independent runs of 200 iterations each):
 
 | Model Architecture | Precision Type | Model Size | Size Reduction | Val Acc | Test Acc | Test Macro F1 | Test Weighted F1 | Median Latency | Throughput |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **PyTorch Baseline** | FP32 | 420.73 KB | 0.00% | 99.07% | 93.08% | 0.9308 | 0.9300 | 0.8280 ms | 987 win/s |
-| **ONNX FP32** | FP32 | 430.83 KB | -2.40% | 99.07% | 93.08% | 0.9308 | 0.9300 | 0.1755 ms | 4,315 win/s |
-| **ONNX FP16** | FP16 | 227.46 KB | **-45.94%** | 99.07% | 93.08% | 0.9308 | 0.9300 | 0.1265 ms | 7,194 win/s |
-| **ONNX INT8 (Static QDQ)** | INT8 Static | 127.94 KB | **-69.59%** | 99.07% | **93.18%** | **0.9318** | **0.9311** | **0.1212 ms** | **7,089 win/s** |
-| **ONNX INT8 (Dynamic)** | INT8 Dynamic | 123.88 KB | **-70.56%** | 99.07% | 93.08% | 0.9308 | 0.9300 | 0.7443 ms | 1,101 win/s |
+| **PyTorch Baseline** | FP32 | 410.86 KB | 0.00% | 99.07% | 93.08% | 0.9308 | 0.9300 | 0.6473 ms | 1,404 win/s |
+| **ONNX FP32** | FP32 | 420.73 KB | -2.40% | 99.07% | 93.08% | 0.9308 | 0.9300 | 0.1600 ms | 5,609 win/s |
+| **ONNX FP16** | FP16 | 222.12 KB | **-45.94%** | 99.07% | 93.08% | 0.9308 | 0.9300 | 0.1443 ms | 6,437 win/s |
+| **ONNX INT8 (Static QDQ)** | INT8 Static | 124.94 KB | **-69.59%** | 99.07% | **93.18%** | **0.9318** | **0.9311** | **0.0995 ms** | **9,097 win/s** |
+| **ONNX INT8 (Dynamic)** | INT8 Dynamic | 120.98 KB | **-70.56%** | 99.07% | 93.08% | 0.9308 | 0.9300 | 1.1664 ms | 905 win/s |
 
-*Key Empirical Insights:*
-1. **INT8 Static QDQ achieves the best balance:** 69.59% file size reduction down to 127.94 KB, fastest CPU inference at 0.1212 ms per window (7,089 windows/sec), and a slight test accuracy gain (+0.10% to 93.18%) due to benign quantization regularization on borderline postural samples.
-2. **Zero Calibration Snooping:** Calibration used 100 validation windows strictly from the 4 internal validation subjects (`[3, 11, 17, 27]`). Test data was never exposed to calibration.
-3. **Dynamic vs Static INT8 on CPU:** Dynamic INT8 is ~6x slower for single-window inference because scale parameters are recalculated dynamically per-window, whereas Static QDQ executes pre-calibrated integer operations.
+*Key Empirical & Scientific Insights:*
+1. **INT8 Static QDQ achieves the best balance:** 69.59% file size reduction down to 124.94 KB, fastest CPU inference at 0.0995 ms per window (9,097 windows/sec, inter-run std: 0.0048 ms), and 93.18% test accuracy.
+2. **Empirical Observation on INT8 Accuracy:** Static INT8 QDQ demonstrated a slight increase in test accuracy from 93.08% to 93.18% (+3 correct windows out of 2,947, primarily in the SITTING and STANDING classes). This difference represents a descriptive observation on this held-out set rather than evidence of superior generalization. Calibration strictly used internal validation subjects (`[3, 11, 17, 27]`), and the test set was completely isolated. The +0.10% delta is within nominal variation for quantization rounding on boundary decision vectors and does not indicate an intrinsic generalization advantage over FP32.
+3. **Zero Calibration Snooping:** Calibration used 100 validation windows strictly from the 4 internal validation subjects (`[3, 11, 17, 27]`). Test data was never exposed to calibration.
+4. **Dynamic vs Static INT8 on CPU:** Dynamic INT8 is ~10x slower for single-window inference because scale parameters are recalculated dynamically per-window, whereas Static QDQ executes pre-calibrated integer operations.
 
 ### C. Real-Time Streaming Emulation Performance
 
@@ -311,16 +312,18 @@ The real-time streaming emulator (`src/deployment/streaming.py`) simulates a rea
 - **Nominal Processing Budget:** 1,280.0 ms.
 - **Missed Deadlines:** **0 (0.00%)** — Real-time compute safety margin factor is **> 5,000x**.
 
-### D. Edge Deployment Hardware Feasibility Matrix
+### D. Edge Deployment Hardware Feasibility Matrix (Preliminary Analytical Estimates)
 
-Based on detailed memory analysis (see [reports/edge_deployment_feasibility.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/edge_deployment_feasibility.md)):
+Based on detailed memory modeling (see [reports/edge_deployment_feasibility.md](reports/edge_deployment_feasibility.md)):
 
-| Target Platform | Core / Architecture | Clock Speed | SRAM | Flash | Feasibility | Estimated Latency | Memory Utilization |
+| Target Platform | Core / Architecture | Clock Speed | SRAM | Flash | Feasibility (Analytical) | Estimated Latency | Working Memory (Est.) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Espressif ESP32-S3** | Dual Xtensa LX7 + SIMD | 240 MHz | 512 KB | 4–8 MB | **Highly Feasible** | 12–25 ms | ~2.5% SRAM, ~3% Flash |
-| **Nordic nRF52840** | ARM Cortex-M4F | 64 MHz | 256 KB | 1 MB | **Highly Feasible** | 45–90 ms | ~5.1% SRAM, ~16% Flash |
-| **Raspberry Pi RP2040** | Dual ARM Cortex-M0+ | 133 MHz | 264 KB | 2 MB | **Feasible (INT8)** | 80–160 ms | ~4.9% SRAM, ~8% Flash |
-| **STM32F401 (BlackPill)** | ARM Cortex-M4F | 84 MHz | 96 KB | 512 KB | **Feasible** | 35–70 ms | ~13.5% SRAM, ~31% Flash |
+| **Espressif ESP32-S3** | Dual Xtensa LX7 + SIMD | 240 MHz | 512 KB | 4–16 MB | **Highly Feasible** | 12–25 ms | ~20 KB SRAM (~96% free), ~210 KB Flash |
+| **Nordic nRF52840** | ARM Cortex-M4F | 64 MHz | 256 KB | 1 MB | **Highly Feasible** | 45–90 ms | ~20 KB SRAM (~92% free), ~210 KB Flash |
+| **Raspberry Pi RP2040** | Dual ARM Cortex-M0+ | 133 MHz | 264 KB | 2 MB | **Feasible (INT8)** | 80–160 ms | ~20 KB SRAM (~92% free), ~210 KB Flash |
+| **STM32F401 (BlackPill)** | ARM Cortex-M4F | 84 MHz | 64–96 KB | 256–512 KB | **Feasible** | 35–70 ms | ~20 KB SRAM (leaves 44–76 KB), ~210 KB Flash |
+
+*All microcontroller estimates are analytical projections based on clock cycles and instruction architectures; no physical bare-metal hardware deployment is claimed.*
 
 ---
 
@@ -337,8 +340,8 @@ Based on detailed memory analysis (see [reports/edge_deployment_feasibility.md](
 | **Macro F1 Comparison** | Comparative bar chart of validation Macro F1 across models | `reports/figures/macro_f1_comparison.png` |
 | **Training Duration** | Comparison of model training runtimes | `reports/figures/training_time_comparison.png` |
 | **Inference Latency** | Per-window inference latency comparison (ms / 2.56s window) | `reports/figures/inference_latency_comparison.png` |
-| **Day 3 Static INT8 Test Matrix** | Normalized confusion matrix for ONNX Static INT8 on test set | `reports/day3_confusion_matrices/cnn_1d_int8_static_test_cm.png` |
-| **Day 3 FP16 Test Matrix** | Normalized confusion matrix for ONNX FP16 on test set | `reports/day3_confusion_matrices/cnn_1d_fp16_test_cm.png` |
+| **Day 3 Static INT8 Test Matrix** | Normalized confusion matrix for ONNX Static INT8 on test set | `reports/day3_confusion_matrices/cm_test_onnx_int8_static_qdq.png` |
+| **Day 3 FP16 Test Matrix** | Normalized confusion matrix for ONNX FP16 on test set | `reports/day3_confusion_matrices/cm_test_onnx_fp16.png` |
 
 ---
 
@@ -348,7 +351,7 @@ All 77 automated tests execute cleanly with `pytest` (62% statement coverage acr
 ```
 ============================= test session starts =============================
 platform win32 -- Python 3.14.3, pytest-9.2.0, pluggy-1.7.0
-rootdir: D:\Projects\Wearable-Sensor-Platform\imu-human-activity-recognition-ml
+rootdir: .
 configfile: pytest.ini
 testpaths: tests
 plugins: anyio-4.16.0, platformdirs-4.14.8, cov-7.1.0
@@ -359,7 +362,7 @@ tests\test_download.py ......                                            [ 28%]
 tests\test_end_to_end_pipeline.py ...                                    [ 32%]
 tests\test_evaluation.py ..                                              [ 35%]
 tests\test_feature_engineering.py .........                              [ 46%]
-tests\test_final_training_leakage.py .......                              [ 55%]
+tests\test_final_training_leakage.py .......                             [ 55%]
 tests\test_leakage_audit.py .....                                        [ 62%]
 tests\test_loaders.py .....                                              [ 68%]
 tests\test_models.py ......                                              [ 76%]
@@ -368,10 +371,10 @@ tests\test_simulation.py .....                                           [ 89%]
 tests\test_splitting.py ...                                              [ 93%]
 tests\test_validation.py .....                                           [100%]
 
-======================= 77 passed, 23 warnings in 32.13s =======================
+============================= 77 passed in 27.78s =============================
 ```
 
-See [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/final_repository_audit.md) and [reports/day3_final_audit.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/day3_final_audit.md) for comprehensive technical audit reports.
+See [reports/final_repository_audit.md](reports/final_repository_audit.md) and [reports/day3_final_audit.md](reports/day3_final_audit.md) for comprehensive technical audit reports.
 
 ---
 
@@ -390,5 +393,5 @@ See [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Plat
 - [x] **Day 1: Data Engineering & Foundation Pipeline** (Automated ingestion, tensor stacking, train-only normalization, exploration report; 29 passing tests at historical milestone).
 - [x] **Day 2: Feature Engineering & Model Evaluation** (204 features, subject-wise splitting, Random Forest, SVM, PyTorch 1D CNN, frozen test evaluation; 44 passing tests at historical milestone).
 - [x] **Day 2.1: Methodology Audit & Leakage Correction** (Zero-leakage unscaled splitting, internal-only scaler fitting, test re-evaluation; 49 passing tests at historical milestone).
-- [x] **Full Repository Repair & Consistency Audit** (Relocation to Drive D, comprehensive suite of 61 passing tests, zero hardcoded paths, exhaustive validation report [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/final_repository_audit.md)).
-- [x] **Day 3: Model Optimization & Embedded Deployment Simulation** (PyTorch-to-ONNX export, FP16 conversion, INT8 Dynamic & Static QDQ quantization, 77 passing tests, real-time streaming pipeline emulation, edge feasibility audit; see [reports/day3_final_audit.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/day3_final_audit.md) and [reports/edge_deployment_feasibility.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/edge_deployment_feasibility.md)).
+- [x] **Full Repository Repair & Consistency Audit** (Relocation to Drive D, comprehensive suite of 61 passing tests, zero hardcoded paths, exhaustive validation report [reports/final_repository_audit.md](reports/final_repository_audit.md)).
+- [x] **Day 3: Model Optimization & Embedded Deployment Simulation** (PyTorch-to-ONNX export, FP16 conversion, INT8 Dynamic & Static QDQ quantization, 77 passing tests, real-time streaming pipeline emulation, edge feasibility audit; see [reports/day3_final_audit.md](reports/day3_final_audit.md) and [reports/edge_deployment_feasibility.md](reports/edge_deployment_feasibility.md)).

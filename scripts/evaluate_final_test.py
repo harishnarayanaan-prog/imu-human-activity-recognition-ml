@@ -73,7 +73,7 @@ def main() -> None:
         save_path=fig_dir / "test_rf_confusion_matrix.png",
     )
     print("\n--- Random Forest Final Test Report ---")
-    print(classification_report(y_test, rf_preds, target_names=ACTIVITY_NAMES, digits=4))
+    print(classification_report(y_test, rf_preds, target_names=ACTIVITY_NAMES, digits=4, zero_division=0))
 
     # 2. Support Vector Machine
     svm_path = repo_root / "models" / "svm.joblib"
@@ -98,7 +98,7 @@ def main() -> None:
         save_path=fig_dir / "test_svm_confusion_matrix.png",
     )
     print("\n--- SVM (RBF) Final Test Report ---")
-    print(classification_report(y_test, svm_preds, target_names=ACTIVITY_NAMES, digits=4))
+    print(classification_report(y_test, svm_preds, target_names=ACTIVITY_NAMES, digits=4, zero_division=0))
 
     # 3. 1D CNN
     cnn_path = repo_root / "models" / "cnn_1d.pt"
@@ -124,7 +124,7 @@ def main() -> None:
         save_path=fig_dir / "test_cnn_confusion_matrix.png",
     )
     print("\n--- 1D CNN Final Test Report ---")
-    print(classification_report(y_test, cnn_preds, target_names=ACTIVITY_NAMES, digits=4))
+    print(classification_report(y_test, cnn_preds, target_names=ACTIVITY_NAMES, digits=4, zero_division=0))
 
     # Assemble summary DataFrame
     df = pd.DataFrame(results)
