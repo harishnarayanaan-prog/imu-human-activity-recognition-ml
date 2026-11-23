@@ -1,5 +1,6 @@
 # Development & Testing Dependencies
 -r requirements.txt
 pytest>=8.0.0,<=9.2.0
+pytest-cov>=6.0.0,<=7.1.0
 jupyter>=1.0.0,<=1.1.1
 ipykernel>=6.29.0

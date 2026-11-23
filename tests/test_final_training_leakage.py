@@ -12,9 +12,16 @@ These tests prove:
 
 from __future__ import annotations
 
+import os
+import tempfile
 import inspect
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+os.environ["MPLCONFIGDIR"] = tempfile.gettempdir()
+import matplotlib
+matplotlib.use("Agg")
+
 import numpy as np
 import pytest
 import torch
@@ -150,3 +157,38 @@ def test_pipeline_isolates_test_data_and_enforces_fixed_epochs(tmp_path: Path) -
         assert mock_predict.call_count == 1
         predict_X = mock_predict.call_args[0][1]
         assert len(predict_X) == N_test, "predict must receive test windows"
+
+
+def test_validation_and_training_subjects_are_strictly_disjoint() -> None:
+    """Verify that internal subject-wise split produces strictly disjoint participant sets."""
+    from src.data.splitting import subject_wise_train_val_split
+
+    rng = np.random.RandomState(42)
+    subjects = np.array([1, 1, 3, 3, 5, 5, 11, 11, 17, 17, 27, 27, 28, 28])
+    X = rng.randn(len(subjects), 128, 9).astype(np.float32)
+    y = np.zeros(len(subjects), dtype=int)
+
+    split = subject_wise_train_val_split(X, y, subjects, val_subjects=[3, 11, 17, 27])
+    assert split.verify_disjointness() is True
+    assert set(split.train_subjects).isdisjoint(set(split.val_subjects))
+    assert split.summary()["is_strictly_disjoint"] is True
+
+
+def test_scaler_isolated_to_internal_training_partition() -> None:
+    """Verify that ChannelWiseStandardScaler fitted on internal train ignores validation samples."""
+    from src.data.preprocess import ChannelWiseStandardScaler
+    from src.data.splitting import prepare_leak_free_train_val_tensors
+
+    X_raw = np.ones((10, 128, 9), dtype=np.float32)
+    # Give validation subjects distinct values
+    X_raw[6:] = 100.0
+    y = np.zeros(10, dtype=int)
+    subjects = np.array([1, 1, 5, 5, 6, 6, 3, 3, 11, 11])
+
+    X_train, y_train, X_val, y_val, scaler, split = prepare_leak_free_train_val_tensors(
+        X_raw, y, subjects, val_subjects=[3, 11]
+    )
+
+    # Scaler mean must equal 1.0 (internal training subjects [1, 5, 6]), NOT 100.0 or intermediate
+    assert np.allclose(scaler.means_, 1.0)
+    assert np.allclose(scaler.stds_, 1.0)  # std of constant 1.0 is 0.0, clipped to 1.0

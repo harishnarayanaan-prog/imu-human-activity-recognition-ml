@@ -2,7 +2,7 @@
 
 [![Python 3.14](https://img.shields.io/badge/python-3.14-blue.svg)](https://www.python.org/downloads/)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
-[![Tests: 58 Passed](https://img.shields.io/badge/tests-58%20passed-brightgreen.svg)]()
+[![Tests: 60 Passed](https://img.shields.io/badge/tests-60%20passed-brightgreen.svg)]()
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ---
@@ -201,7 +201,7 @@ python -m src.evaluation.metrics
 python scripts/evaluate_final_test.py
 ```
 
-### Step 6: Execute Automated Test Suite (58 Tests)
+### Step 6: Execute Automated Test Suite (60 Tests)
 ```powershell
 pytest -q
 ```
@@ -264,31 +264,30 @@ All reported metrics are genuine empirical values directly evaluated on physical
 
 ## 11. Automated Testing Results
 
-All 58 automated tests execute cleanly with `pytest`:
+All 60 automated tests execute cleanly with `pytest` (56% statement coverage across `src/`):
 ```
 ============================= test session starts =============================
 platform win32 -- Python 3.14.3, pytest-9.2.0, pluggy-1.7.0
 rootdir: D:\Projects\Wearable-Sensor-Platform\imu-human-activity-recognition-ml
 configfile: pytest.ini
 testpaths: tests
-plugins: anyio-4.16.0, platformdirs-4.14.8
-collected 58 items
+plugins: anyio-4.16.0, platformdirs-4.14.8, cov-7.1.0
+collected 60 items
 
-tests\test_final_training_leakage.py ....                                [ 41%]
-
-tests\test_download.py ......                                            [ 11%]
-tests\test_end_to_end_pipeline.py ...                                    [ 16%]
-tests\test_evaluation.py ..                                              [ 20%]
-tests\test_feature_engineering.py .........                              [ 37%]
-tests\test_leakage_audit.py .....                                        [ 46%]
-tests\test_loaders.py .....                                              [ 55%]
-tests\test_models.py ......                                              [ 66%]
-tests\test_preprocessing.py .....                                        [ 75%]
-tests\test_simulation.py .....                                           [ 85%]
-tests\test_splitting.py ...                                              [ 90%]
+tests\test_download.py ......                                            [ 10%]
+tests\test_end_to_end_pipeline.py ...                                    [ 15%]
+tests\test_evaluation.py ..                                              [ 18%]
+tests\test_feature_engineering.py .........                              [ 33%]
+tests\test_final_training_leakage.py ......                              [ 43%]
+tests\test_leakage_audit.py .....                                        [ 51%]
+tests\test_loaders.py .....                                              [ 60%]
+tests\test_models.py ......                                              [ 70%]
+tests\test_preprocessing.py .....                                        [ 78%]
+tests\test_simulation.py .....                                           [ 86%]
+tests\test_splitting.py ...                                              [ 91%]
 tests\test_validation.py .....                                           [100%]
 
-======================= 58 passed, 11 warnings in 43.74s ========================
+======================= 60 passed, 11 warnings in 37.46s =======================
 ```
 
 See [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/final_repository_audit.md) for the comprehensive 12-criterion technical audit report.
@@ -310,5 +309,5 @@ See [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Plat
 - [x] **Day 1: Data Engineering & Foundation Pipeline** (Automated ingestion, tensor stacking, train-only normalization, exploration report, 29 passing tests).
 - [x] **Day 2: Feature Engineering & Model Evaluation** (204 features, subject-wise splitting, Random Forest, SVM, PyTorch 1D CNN, frozen test evaluation, 44 passing tests).
 - [x] **Day 2.1: Methodology Audit & Leakage Correction** (Zero-leakage unscaled splitting, internal-only scaler fitting, test re-evaluation, 49 passing tests).
-- [x] **Full Repository Repair & Validation Audit** (Relocation to Drive D, 58 passing tests, zero hardcoded paths, exhaustive validation report [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/final_repository_audit.md)).
+- [x] **Full Repository Repair & Validation Audit** (Relocation to Drive D, 60 passing tests, zero hardcoded paths, exhaustive validation report [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/final_repository_audit.md)).
 - [ ] **Day 3: Model Optimization & Embedded Deployment Simulation** (Quantization to INT8/FP16, ONNX export, micro-controller latency profiling, real-time streaming pipeline emulation; see [docs/day3_plan.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/docs/day3_plan.md)).

@@ -22,7 +22,7 @@ Key accomplishments achieved in this audit:
    - **Validation Set (1,401 windows, unseen subjects):** 1D CNN: **99.07%** accuracy, RF: **97.86%**, SVM: **96.29%**.
    - **Official Test Set (2,947 windows, 9 unseen subjects, zero test leakage):** 1D CNN: **93.08%** accuracy, SVM: **92.20%**, RF: **91.38%**.
 6. **Feature Engineering Integrity:** Verified 204 engineered features across 12 channels ($9\text{ raw} + 3\text{ derived magnitudes}$) and 17 statistical/frequency measures per channel.
-7. **Automated Testing Suite Expanded:** **58 automated pytest tests** created and verified passing (`100% pass rate`, 0 failures), including dedicated leakage regression tests with function mocks and signature assertions.
+7. **Automated Testing Suite Expanded:** **60 automated pytest tests** created and verified passing (`100% pass rate`, 0 failures, **56% code coverage**), including dedicated leakage regression tests with function mocks, signature assertions, and partition isolation checks.
 8. **Zero Hardcoded Absolute Paths:** Full portability audit confirmed zero hardcoded machine paths in all source, test, script, and documentation files.
 9. **Scientific & Hardware Disclosures:** Explicitly documented that datasets comprise pre-segmented smartphone sensor windows under controlled laboratory conditions, test evaluations are methodology-corrected re-evaluations, and physical microcontroller/ESP32 deployment is not claimed.
 
@@ -219,6 +219,6 @@ tests/test_validation.py .....                                           [100%] 
 
 ## 9. Conclusion & Readiness Verdict
 
-The repository `imu-human-activity-recognition-ml` has eliminated both preprocessing normalization leakage and official test-set evaluation leakage. The resulting pipeline achieves 93.08% test accuracy on unseen participants with a lightweight 102K-parameter 1D CNN and runs with 58/58 passing automated tests.
+The repository `imu-human-activity-recognition-ml` has eliminated both preprocessing normalization leakage and official test-set evaluation leakage. The resulting pipeline achieves 93.08% test accuracy on unseen participants with a lightweight 102K-parameter 1D CNN and runs with 60/60 passing automated tests (56% statement coverage).
 
 **Status:** **APPROVED & INTERNSHIP-READY.**
