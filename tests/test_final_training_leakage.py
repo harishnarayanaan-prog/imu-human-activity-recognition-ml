@@ -23,10 +23,13 @@ import matplotlib
 matplotlib.use("Agg")
 
 import numpy as np
+import pandas as pd
 import pytest
 import torch
 
 from src.models.cnn_1d import CNN1DHAR, Conv1DNet
+from src.models.random_forest import RandomForestHAR
+from src.models.svm import SVMHAR
 
 
 def test_fit_fixed_epochs_signature_rejects_validation_data() -> None:
@@ -111,9 +114,12 @@ def test_pipeline_isolates_test_data_and_enforces_fixed_epochs(tmp_path: Path) -
     best_val_epochs = 24
 
     with patch("numpy.save"), \
+         patch.object(RandomForestHAR, "save", autospec=True), \
+         patch.object(SVMHAR, "save", autospec=True), \
+         patch.object(CNN1DHAR, "save", autospec=True), \
+         patch.object(pd.DataFrame, "to_csv", autospec=True), \
          patch.object(CNN1DHAR, "fit_fixed_epochs", autospec=True) as mock_fit, \
-         patch.object(CNN1DHAR, "predict", autospec=True, return_value=np.zeros(N_test, dtype=np.int64)) as mock_predict, \
-         patch.object(CNN1DHAR, "save", autospec=True):
+         patch.object(CNN1DHAR, "predict", autospec=True, return_value=np.zeros(N_test, dtype=np.int64)) as mock_predict:
 
         # Configure mock_fit to set attributes expected by pipeline
         def mock_fit_impl(self, X, y, epochs):
@@ -192,3 +198,31 @@ def test_scaler_isolated_to_internal_training_partition() -> None:
     # Scaler mean must equal 1.0 (internal training subjects [1, 5, 6]), NOT 100.0 or intermediate
     assert np.allclose(scaler.means_, 1.0)
     assert np.allclose(scaler.stds_, 1.0)  # std of constant 1.0 is 0.0, clipped to 1.0
+
+
+def test_final_training_rejects_invalid_epoch_counts(tmp_path: Path) -> None:
+    """Verify that run_corrected_final_training raises ValueError when given invalid epoch counts.
+
+    Prohibits silent fallbacks to default epochs when validation fails.
+    """
+    from scripts.run_corrected_pipeline import run_corrected_final_training
+
+    rng = np.random.RandomState(42)
+    X = rng.randn(10, 128, 9).astype(np.float32)
+    y = np.zeros(10, dtype=int)
+    subjs = np.ones(10, dtype=int)
+
+    invalid_epoch_values = [None, 0, -1, -32, "32", 0.5]
+
+    for val in invalid_epoch_values:
+        with pytest.raises(ValueError, match="Invalid validation-derived epoch count"):
+            run_corrected_final_training(
+                X_train_raw=X,
+                y_train=y,
+                subj_train=subjs,
+                X_test_raw=X,
+                y_test=y,
+                subj_test=subjs,
+                best_cnn_epochs=val,  # type: ignore
+                fig_dir=tmp_path,
+            )

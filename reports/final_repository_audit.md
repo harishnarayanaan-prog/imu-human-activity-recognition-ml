@@ -22,7 +22,7 @@ Key accomplishments achieved in this audit:
    - **Validation Set (1,401 windows, unseen subjects):** 1D CNN: **99.07%** accuracy, RF: **97.86%**, SVM: **96.29%**.
    - **Official Test Set (2,947 windows, 9 unseen subjects, zero test leakage):** 1D CNN: **93.08%** accuracy, SVM: **92.20%**, RF: **91.38%**.
 6. **Feature Engineering Integrity:** Verified 204 engineered features across 12 channels ($9\text{ raw} + 3\text{ derived magnitudes}$) and 17 statistical/frequency measures per channel.
-7. **Automated Testing Suite Expanded:** **60 automated pytest tests** created and verified passing (`100% pass rate`, 0 failures, **56% code coverage**), including dedicated leakage regression tests with function mocks, signature assertions, and partition isolation checks.
+7. **Automated Testing Suite Expanded:** **61 automated pytest tests** created and verified passing (`100% pass rate`, 0 failures, **56% code coverage**), including dedicated leakage regression tests with function mocks, signature assertions, and partition isolation checks.
 8. **Zero Hardcoded Absolute Paths:** Full portability audit confirmed zero hardcoded machine paths in all source, test, script, and documentation files.
 9. **Scientific & Hardware Disclosures:** Explicitly documented that datasets comprise pre-segmented smartphone sensor windows under controlled laboratory conditions, test evaluations are methodology-corrected re-evaluations, and physical microcontroller/ESP32 deployment is not claimed.
 
@@ -109,12 +109,13 @@ Because `fit()` used the supplied evaluation dataset for validation loss trackin
 - **Disk Footprint:** 2.46 MB (`models/svm.joblib`).
 
 ### 4.3 1D Deep Convolutional Neural Network (`CNN1DHAR`)
-- **Architecture:** 3-block 1D convolutional feature extractor followed by fully connected classification head.
-  - Block 1: `Conv1d(9 -> 64, kernel_size=5, padding=2)` $\rightarrow$ `BatchNorm1d(64)` $\rightarrow$ `ReLU` $\rightarrow$ `MaxPool1d(2)` $\rightarrow$ `Dropout(0.2)`
-  - Block 2: `Conv1d(64 -> 128, kernel_size=5, padding=2)` $\rightarrow$ `BatchNorm1d(128)` $\rightarrow$ `ReLU` $\rightarrow$ `MaxPool1d(2)` $\rightarrow$ `Dropout(0.2)`
-  - Block 3: `Conv1d(128 -> 256, kernel_size=3, padding=1)` $\rightarrow$ `BatchNorm1d(256)` $\rightarrow$ `ReLU` $\rightarrow$ `AdaptiveAvgPool1d(1)` $\rightarrow$ `Dropout(0.3)`
-  - Linear Head: `Linear(256 -> 128)` $\rightarrow$ `ReLU` $\rightarrow$ `Dropout(0.4)` $\rightarrow$ `Linear(128 -> 6)`.
-- **Total Trainable Parameters:** **102,598 parameters** (400 KB uncompressed float32 weights).
+- **Architecture:** 3-block 1D convolutional feature extractor followed by fully connected classification head (verified against `src/models/cnn_1d.py`):
+  - Block 1: `Conv1d(9 -> 64, kernel_size=5, padding=2)` $\rightarrow$ `BatchNorm1d(64)` $\rightarrow$ `ReLU` $\rightarrow$ `MaxPool1d(kernel_size=2)`
+  - Block 2: `Conv1d(64 -> 128, kernel_size=5, padding=2)` $\rightarrow$ `BatchNorm1d(128)` $\rightarrow$ `ReLU` $\rightarrow$ `MaxPool1d(kernel_size=2)`
+  - Block 3: `Conv1d(128 -> 128, kernel_size=3, padding=1)` $\rightarrow$ `BatchNorm1d(128)` $\rightarrow$ `ReLU`
+  - Aggregation: `AdaptiveAvgPool1d(1)` (Global Average Pooling)
+  - Linear Head: `Dropout(0.35)` $\rightarrow$ `Linear(128 -> 64)` $\rightarrow$ `ReLU` $\rightarrow$ `Dropout(0.175)` $\rightarrow$ `Linear(64 -> 6)`
+- **Total Trainable Parameters:** **102,598 parameters** (400 KB uncompressed float32 weights, verified via `count_parameters()`).
 - **Validation Training:** Monitored with early stopping (`patience=8`); selected **Epoch 32**.
 - **Final Training:** Reinitialized from scratch; trained for fixed 32 epochs with zero test loss calculation.
 - **Validation Accuracy:** **99.07%** | **Test Accuracy:** **93.08%**
@@ -157,7 +158,7 @@ Because `fit()` used the supplied evaluation dataset for validation loss trackin
 
 ## 6. Automated Testing Suite Verification
 
-A comprehensive automated test suite with **58 tests** covers the entire data and model lifecycle:
+A comprehensive automated test suite with **61 tests** covers the entire data and model lifecycle:
 
 ```text
 ============================= test session starts =============================
@@ -165,22 +166,22 @@ platform win32 -- Python 3.14.3, pytest-9.2.0, pluggy-1.7.0
 rootdir: D:\Projects\Wearable-Sensor-Platform\imu-human-activity-recognition-ml
 configfile: pytest.ini
 testpaths: tests
-collected 58 items
+collected 61 items
 
 tests/test_download.py ......                                            [ 10%] (6 tests)
 tests/test_end_to_end_pipeline.py ...                                    [ 15%] (3 tests)
 tests/test_evaluation.py ..                                              [ 18%] (2 tests)
-tests/test_feature_engineering.py .........                              [ 34%] (9 tests)
-tests/test_final_training_leakage.py ....                                [ 41%] (4 tests)
-tests/test_leakage_audit.py .....                                        [ 50%] (5 tests)
-tests/test_loaders.py .....                                              [ 58%] (5 tests)
-tests/test_models.py ......                                              [ 68%] (6 tests)
-tests/test_preprocessing.py .....                                        [ 77%] (5 tests)
+tests/test_feature_engineering.py .........                              [ 33%] (9 tests)
+tests/test_final_training_leakage.py .......                              [ 44%] (7 tests)
+tests/test_leakage_audit.py .....                                        [ 52%] (5 tests)
+tests/test_loaders.py .....                                              [ 60%] (5 tests)
+tests/test_models.py ......                                              [ 70%] (6 tests)
+tests/test_preprocessing.py .....                                        [ 78%] (5 tests)
 tests/test_simulation.py .....                                           [ 86%] (5 tests)
 tests/test_splitting.py ...                                              [ 91%] (3 tests)
 tests/test_validation.py .....                                           [100%] (5 tests)
 
-======================= 58 passed, 11 warnings in 43.74s =======================
+======================= 61 passed, 11 warnings in 20.69s =======================
 ```
 
 ### Safety, Leakage, and Methodological Assertions Tested:
@@ -188,9 +189,10 @@ tests/test_validation.py .....                                           [100%] 
 2. `test_final_training_does_not_calculate_val_or_test_loss`: Asserts that `val_loss` and `val_acc` remain strictly empty in final training.
 3. `test_final_model_reinitialized_from_scratch`: Asserts that model weights are completely re-seeded and initialized from scratch.
 4. `test_pipeline_isolates_test_data_and_enforces_fixed_epochs`: Uses mocks and spies on the pipeline to assert test arrays are never passed to fit routines.
-5. `test_validation_participants_do_not_contribute_to_scaler`: Asserts statistical divergence between training-only and training+validation scaler parameters.
-6. `test_training_and_validation_subjects_strictly_disjoint`: Asserts zero intersection between train and validation subjects ($S_{\text{train}} \cap S_{\text{val}} = \emptyset$).
-7. `test_models_reproducibility_with_fixed_seed`: Asserts exact identical predictions across repeated executions with fixed random seeds.
+5. `test_final_training_rejects_invalid_epoch_counts`: Asserts that invalid epoch inputs (`None`, `0`, `-1`, `-32`, `"32"`, float) raise explicit `ValueError` rather than silently falling back.
+6. `test_validation_participants_do_not_contribute_to_scaler`: Asserts statistical divergence between training-only and training+validation scaler parameters.
+7. `test_training_and_validation_subjects_strictly_disjoint`: Asserts zero intersection between train and validation subjects ($S_{\text{train}} \cap S_{\text{val}} = \emptyset$).
+8. `test_models_reproducibility_with_fixed_seed`: Asserts exact identical predictions across repeated executions with fixed random seeds.
 
 ---
 
@@ -219,6 +221,6 @@ tests/test_validation.py .....                                           [100%] 
 
 ## 9. Conclusion & Readiness Verdict
 
-The repository `imu-human-activity-recognition-ml` has eliminated both preprocessing normalization leakage and official test-set evaluation leakage. The resulting pipeline achieves 93.08% test accuracy on unseen participants with a lightweight 102K-parameter 1D CNN and runs with 60/60 passing automated tests (56% statement coverage).
+The repository `imu-human-activity-recognition-ml` has eliminated both preprocessing normalization leakage and official test-set evaluation leakage. The resulting pipeline achieves 93.08% test accuracy on unseen participants with a lightweight 102K-parameter 1D CNN and runs with 61/61 passing automated tests (56% statement coverage).
 
 **Status:** **APPROVED & INTERNSHIP-READY.**

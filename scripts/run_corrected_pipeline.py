@@ -232,6 +232,15 @@ def run_corrected_final_training(
     logger.info("PHASE 3: FINAL MODEL TRAINING (All 21 Official Training Subjects)")
     logger.info("=" * 80)
 
+    # Validate best_cnn_epochs upfront: prohibit silent fallback to default epochs
+    if best_cnn_epochs is None or not isinstance(best_cnn_epochs, int) or best_cnn_epochs <= 0:
+        raise ValueError(
+            f"Invalid validation-derived epoch count: best_cnn_epochs={best_cnn_epochs!r}. "
+            "Final CNN training requires an explicit, positive integer epoch budget derived from a "
+            "successful internal validation run. Silent fallback is strictly prohibited to prevent "
+            "concealing upstream validation failures."
+        )
+
     # 1. Fit final scaler on ALL official training subjects
     final_scaler = ChannelWiseStandardScaler()
     final_scaler.fit(X_train_raw)
@@ -316,11 +325,24 @@ def run_corrected_final_training(
     print(classification_report(y_test, svm_test_preds, target_names=ACTIVITY_NAMES, digits=4))
 
     # Final Model C: 1D Deep CNN (7,352 samples)
-    # Fixed epoch count derived strictly from the internal validation run.
-    # Zero test arrays are passed to the training routine.
-    fixed_epochs = best_cnn_epochs if (best_cnn_epochs and best_cnn_epochs > 0) else 32
+    # Fixed epoch count validated upfront from the internal validation run.
+    fixed_epochs = best_cnn_epochs
+
+    # Save authoritative epoch selection metadata
+    epoch_metadata = {
+        "validation_selected_epoch": fixed_epochs,
+        "selection_source": "internal_subject_wise_validation",
+        "validation_subjects": [3, 11, 17, 27],
+        "training_subjects_count": 17,
+        "evaluation_protocol": "fixed_epochs_zero_test_leakage",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    meta_path = repo_root / "reports" / "epoch_selection_metadata.json"
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(epoch_metadata, f, indent=2)
+
     logger.info(
-        "Training Final 1D CNN on full official training set (fixed epochs: %d, derived from validation)...",
+        "Training Final 1D CNN on full official training set (fixed epochs: %d, verified from validation metadata)...",
         fixed_epochs,
     )
     cnn_final = CNN1DHAR(

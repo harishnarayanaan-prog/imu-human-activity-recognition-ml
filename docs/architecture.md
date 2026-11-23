@@ -63,7 +63,7 @@ flowchart TD
     end
 
     subgraph S6["Phase 6: Quality Assurance & Testing"]
-        TESTS["pytest Test Suite (60 Passing Tests, 56% Coverage)"]
+        TESTS["pytest Test Suite (61 Passing Tests, 56% Coverage)"]
         TESTS --> REG["Leakage Regression Tests (tests/test_final_training_leakage.py)"]
     end
 ```

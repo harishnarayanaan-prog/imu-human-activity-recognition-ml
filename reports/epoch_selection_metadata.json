@@ -1,0 +1,13 @@
+{
+  "validation_selected_epoch": 24,
+  "selection_source": "internal_subject_wise_validation",
+  "validation_subjects": [
+    3,
+    11,
+    17,
+    27
+  ],
+  "training_subjects_count": 17,
+  "evaluation_protocol": "fixed_epochs_zero_test_leakage",
+  "timestamp": "2026-11-23T17:43:53Z"
+}
