@@ -1,0 +1,17 @@
+{
+  "benchmark_timestamp": "2026-11-23T18:21:02Z",
+  "warm_up_iterations": 50,
+  "timed_iterations": 200,
+  "batch_size": 1,
+  "runtime_provider": "CPUExecutionProvider",
+  "cpu_threads": 4,
+  "models_evaluated": [
+    "PyTorch Baseline (FP32)",
+    "ONNX (FP32)",
+    "ONNX (FP16)",
+    "ONNX INT8 (Dynamic)",
+    "ONNX INT8 (Static QDQ)"
+  ],
+  "validation_samples_count": 1401,
+  "test_samples_count": 2947
+}

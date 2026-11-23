@@ -1,0 +1,30 @@
+{
+  "python_version": "3.14.3",
+  "pytorch_version": "2.15.0+cpu",
+  "numpy_version": "2.5.5",
+  "scikit_learn_version": "1.9.1",
+  "onnx_version": "1.23.2",
+  "onnxruntime_version": "1.32.0",
+  "operating_system": "Windows 11 (10.0.26300)",
+  "cpu_processor": "Intel64 Family 6 Model 165 Stepping 2, GenuineIntel",
+  "cpu_cores_logical": 8,
+  "cpu_cores_physical": 4,
+  "total_ram_gb": 7.87,
+  "available_ram_gb": 1.38,
+  "baseline_model_path": "models/cnn_1d.pt",
+  "baseline_model_size_bytes": 420729,
+  "baseline_model_size_mb": 0.4012,
+  "baseline_model_sha256": "19c5ba643e17f2cada7a446c536b154a00ad7affaadda43fae67e8f7c96a55ba",
+  "baseline_trainable_parameters": 102598,
+  "baseline_classes": 6,
+  "input_tensor_shape": [
+    1,
+    9,
+    128
+  ],
+  "raw_window_shape": [
+    1,
+    128,
+    9
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "parity_results": {
+    "num_samples": 200,
+    "max_absolute_logit_diff": 7.62939453125e-06,
+    "mean_absolute_logit_diff": 8.1550172126299e-07,
+    "max_prob_diff": 1.7881393432617188e-07,
+    "mean_prob_diff": 1.8869699136558893e-09,
+    "prediction_agreement_pct": 100.0,
+    "matching_predictions": 200,
+    "tolerance_threshold": 0.0001,
+    "parity_passed": true
+  },
+  "graph_inspections": {
+    "onnx_fp32": {
+      "model_path": "D:\\Projects\\Wearable-Sensor-Platform\\imu-human-activity-recognition-ml\\models\\optimized\\cnn_1d_fp32.onnx",
+      "file_size_bytes": 430830,
+      "file_size_mb": 0.4109,
+      "precision_type": "fp32",
+      "total_nodes": 15,
+      "quantized_nodes": 0,
+      "floating_point_nodes": 15,
+      "conv_layers_total": 3,
+      "conv_layers_quantized": 0,
+      "linear_layers_quantized": 0,
+      "operator_distribution": {
+        "Conv": 3,
+        "Relu": 4,
+        "MaxPool": 2,
+        "Unsqueeze": 1,
+        "ReduceMean": 1,
+        "Squeeze": 2,
+        "Gemm": 2
+      }
+    },
+    "onnx_fp16": {
+      "model_path": "D:\\Projects\\Wearable-Sensor-Platform\\imu-human-activity-recognition-ml\\models\\optimized\\cnn_1d_fp16.onnx",
+      "file_size_bytes": 227455,
+      "file_size_mb": 0.2169,
+      "precision_type": "fp32",
+      "total_nodes": 17,
+      "quantized_nodes": 0,
+      "floating_point_nodes": 17,
+      "conv_layers_total": 3,
+      "conv_layers_quantized": 0,
+      "linear_layers_quantized": 0,
+      "operator_distribution": {
+        "Cast": 2,
+        "Conv": 3,
+        "Relu": 4,
+        "MaxPool": 2,
+        "Unsqueeze": 1,
+        "ReduceMean": 1,
+        "Squeeze": 2,
+        "Gemm": 2
+      }
+    },
+    "onnx_int8_static": {
+      "model_path": "D:\\Projects\\Wearable-Sensor-Platform\\imu-human-activity-recognition-ml\\models\\optimized\\cnn_1d_int8_static.onnx",
+      "file_size_bytes": 127942,
+      "file_size_mb": 0.122,
+      "precision_type": "int8_static_qdq",
+      "total_nodes": 41,
+      "quantized_nodes": 30,
+      "floating_point_nodes": 11,
+      "conv_layers_total": 3,
+      "conv_layers_quantized": 0,
+      "linear_layers_quantized": 0,
+      "operator_distribution": {
+        "DequantizeLinear": 20,
+        "QuantizeLinear": 10,
+        "Conv": 3,
+        "MaxPool": 2,
+        "Unsqueeze": 1,
+        "ReduceMean": 1,
+        "Squeeze": 2,
+        "Gemm": 2
+      }
+    },
+    "onnx_int8_dynamic": {
+      "model_path": "D:\\Projects\\Wearable-Sensor-Platform\\imu-human-activity-recognition-ml\\models\\optimized\\cnn_1d_int8.onnx",
+      "file_size_bytes": 123881,
+      "file_size_mb": 0.1181,
+      "precision_type": "int8_dynamic",
+      "total_nodes": 43,
+      "quantized_nodes": 10,
+      "floating_point_nodes": 33,
+      "conv_layers_total": 3,
+      "conv_layers_quantized": 3,
+      "linear_layers_quantized": 2,
+      "operator_distribution": {
+        "Reshape": 3,
+        "DynamicQuantizeLinear": 5,
+        "Mul": 10,
+        "ConvInteger": 3,
+        "Cast": 5,
+        "Add": 5,
+        "Relu": 4,
+        "MaxPool": 2,
+        "Unsqueeze": 1,
+        "ReduceMean": 1,
+        "Squeeze": 2,
+        "MatMulInteger": 2
+      }
+    }
+  }
+}

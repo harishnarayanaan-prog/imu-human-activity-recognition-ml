@@ -1,0 +1,6 @@
+model,precision,size_bytes,size_mb,size_reduction_pct,val_accuracy_pct,val_macro_f1,val_acc_delta_pct,test_accuracy_pct,test_macro_f1,test_weighted_f1,test_acc_delta_pct,latency_median_ms,latency_mean_ms,latency_p95_ms,latency_p99_ms,throughput_windows_sec
+PyTorch Baseline (FP32),FP32,420729,0.4012,0.0,99.07,0.9914,0.0,93.08,0.9308,0.93,0.0,0.828,1.0129,2.0815,3.4257,987.25
+ONNX (FP32),FP32,430830,0.4109,-2.4,99.07,0.9914,0.0,93.08,0.9308,0.93,0.0,0.1755,0.2317,0.4376,1.0534,4315.19
+ONNX (FP16),FP16,227455,0.2169,45.94,99.07,0.9914,0.0,93.08,0.9308,0.93,0.0,0.1265,0.139,0.2111,0.2877,7194.4
+ONNX INT8 (Dynamic),INT8 Dynamic,123881,0.1181,70.56,99.07,0.9914,0.0,93.08,0.9308,0.93,0.0,0.7443,0.908,1.5456,1.8458,1101.3
+ONNX INT8 (Static QDQ),INT8 Static QDQ,127942,0.122,69.59,99.07,0.9914,0.0,93.18,0.9318,0.9311,0.1,0.1212,0.1411,0.2439,0.5254,7089.08

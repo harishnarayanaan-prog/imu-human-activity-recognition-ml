@@ -1,0 +1,837 @@
+{
+  "PyTorch Baseline (FP32)": {
+    "metadata": {
+      "model": "PyTorch Baseline (FP32)",
+      "precision": "FP32",
+      "size_bytes": 420729,
+      "size_mb": 0.4012,
+      "size_reduction_pct": 0.0,
+      "val_accuracy_pct": 99.07,
+      "val_macro_f1": 0.9914,
+      "val_acc_delta_pct": 0.0,
+      "test_accuracy_pct": 93.08,
+      "test_macro_f1": 0.9308,
+      "test_weighted_f1": 0.93,
+      "test_acc_delta_pct": 0.0,
+      "latency_median_ms": 0.828,
+      "latency_mean_ms": 1.0129,
+      "latency_p95_ms": 2.0815,
+      "latency_p99_ms": 3.4257,
+      "throughput_windows_sec": 987.25
+    },
+    "latency_stats": {
+      "warm_up_iterations": 50,
+      "timed_iterations": 200,
+      "batch_size": 1,
+      "mean_latency_ms": 1.0129,
+      "median_latency_ms": 0.828,
+      "p90_latency_ms": 1.5926,
+      "p95_latency_ms": 2.0815,
+      "p99_latency_ms": 3.4257,
+      "min_latency_ms": 0.5684,
+      "max_latency_ms": 3.7337,
+      "std_latency_ms": 0.5615,
+      "throughput_windows_per_sec": 987.25
+    },
+    "validation_metrics": {
+      "accuracy": 0.9907,
+      "accuracy_pct": 99.07,
+      "precision_macro": 0.9922,
+      "recall_macro": 0.9909,
+      "f1_macro": 0.9914,
+      "f1_weighted": 0.9907,
+      "confusion_matrix": [
+        [
+          235,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          212,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          185,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          226,
+          13,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          266,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          264
+        ]
+      ],
+      "per_class_f1": {
+        "WALKING": 1.0,
+        "WALKING_UPSTAIRS": 1.0,
+        "WALKING_DOWNSTAIRS": 1.0,
+        "SITTING": 0.972,
+        "STANDING": 0.9761,
+        "LAYING": 1.0
+      }
+    },
+    "test_metrics": {
+      "accuracy": 0.9308,
+      "accuracy_pct": 93.08,
+      "precision_macro": 0.9304,
+      "recall_macro": 0.9322,
+      "f1_macro": 0.9308,
+      "f1_weighted": 0.93,
+      "confusion_matrix": [
+        [
+          490,
+          1,
+          5,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          447,
+          24,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          420,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          25,
+          0,
+          383,
+          83,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          65,
+          466,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          537
+        ]
+      ],
+      "per_class_f1": {
+        "WALKING": 0.9939,
+        "WALKING_UPSTAIRS": 0.946,
+        "WALKING_DOWNSTAIRS": 0.9666,
+        "SITTING": 0.8158,
+        "STANDING": 0.8622,
+        "LAYING": 1.0
+      }
+    }
+  },
+  "ONNX (FP32)": {
+    "metadata": {
+      "model": "ONNX (FP32)",
+      "precision": "FP32",
+      "size_bytes": 430830,
+      "size_mb": 0.4109,
+      "size_reduction_pct": -2.4,
+      "val_accuracy_pct": 99.07,
+      "val_macro_f1": 0.9914,
+      "val_acc_delta_pct": 0.0,
+      "test_accuracy_pct": 93.08,
+      "test_macro_f1": 0.9308,
+      "test_weighted_f1": 0.93,
+      "test_acc_delta_pct": 0.0,
+      "latency_median_ms": 0.1755,
+      "latency_mean_ms": 0.2317,
+      "latency_p95_ms": 0.4376,
+      "latency_p99_ms": 1.0534,
+      "throughput_windows_sec": 4315.19
+    },
+    "latency_stats": {
+      "warm_up_iterations": 50,
+      "timed_iterations": 200,
+      "batch_size": 1,
+      "mean_latency_ms": 0.2317,
+      "median_latency_ms": 0.1755,
+      "p90_latency_ms": 0.2992,
+      "p95_latency_ms": 0.4376,
+      "p99_latency_ms": 1.0534,
+      "min_latency_ms": 0.1431,
+      "max_latency_ms": 1.9296,
+      "std_latency_ms": 0.1826,
+      "throughput_windows_per_sec": 4315.19
+    },
+    "validation_metrics": {
+      "accuracy": 0.9907,
+      "accuracy_pct": 99.07,
+      "precision_macro": 0.9922,
+      "recall_macro": 0.9909,
+      "f1_macro": 0.9914,
+      "f1_weighted": 0.9907,
+      "confusion_matrix": [
+        [
+          235,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          212,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          185,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          226,
+          13,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          266,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          264
+        ]
+      ],
+      "per_class_f1": {
+        "WALKING": 1.0,
+        "WALKING_UPSTAIRS": 1.0,
+        "WALKING_DOWNSTAIRS": 1.0,
+        "SITTING": 0.972,
+        "STANDING": 0.9761,
+        "LAYING": 1.0
+      }
+    },
+    "test_metrics": {
+      "accuracy": 0.9308,
+      "accuracy_pct": 93.08,
+      "precision_macro": 0.9304,
+      "recall_macro": 0.9322,
+      "f1_macro": 0.9308,
+      "f1_weighted": 0.93,
+      "confusion_matrix": [
+        [
+          490,
+          1,
+          5,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          447,
+          24,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          420,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          25,
+          0,
+          383,
+          83,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          65,
+          466,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          537
+        ]
+      ],
+      "per_class_f1": {
+        "WALKING": 0.9939,
+        "WALKING_UPSTAIRS": 0.946,
+        "WALKING_DOWNSTAIRS": 0.9666,
+        "SITTING": 0.8158,
+        "STANDING": 0.8622,
+        "LAYING": 1.0
+      }
+    }
+  },
+  "ONNX (FP16)": {
+    "metadata": {
+      "model": "ONNX (FP16)",
+      "precision": "FP16",
+      "size_bytes": 227455,
+      "size_mb": 0.2169,
+      "size_reduction_pct": 45.94,
+      "val_accuracy_pct": 99.07,
+      "val_macro_f1": 0.9914,
+      "val_acc_delta_pct": 0.0,
+      "test_accuracy_pct": 93.08,
+      "test_macro_f1": 0.9308,
+      "test_weighted_f1": 0.93,
+      "test_acc_delta_pct": 0.0,
+      "latency_median_ms": 0.1265,
+      "latency_mean_ms": 0.139,
+      "latency_p95_ms": 0.2111,
+      "latency_p99_ms": 0.2877,
+      "throughput_windows_sec": 7194.4
+    },
+    "latency_stats": {
+      "warm_up_iterations": 50,
+      "timed_iterations": 200,
+      "batch_size": 1,
+      "mean_latency_ms": 0.139,
+      "median_latency_ms": 0.1265,
+      "p90_latency_ms": 0.1536,
+      "p95_latency_ms": 0.2111,
+      "p99_latency_ms": 0.2877,
+      "min_latency_ms": 0.1237,
+      "max_latency_ms": 0.3321,
+      "std_latency_ms": 0.0328,
+      "throughput_windows_per_sec": 7194.4
+    },
+    "validation_metrics": {
+      "accuracy": 0.9907,
+      "accuracy_pct": 99.07,
+      "precision_macro": 0.9922,
+      "recall_macro": 0.9909,
+      "f1_macro": 0.9914,
+      "f1_weighted": 0.9907,
+      "confusion_matrix": [
+        [
+          235,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          212,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          185,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          226,
+          13,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          266,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          264
+        ]
+      ],
+      "per_class_f1": {
+        "WALKING": 1.0,
+        "WALKING_UPSTAIRS": 1.0,
+        "WALKING_DOWNSTAIRS": 1.0,
+        "SITTING": 0.972,
+        "STANDING": 0.9761,
+        "LAYING": 1.0
+      }
+    },
+    "test_metrics": {
+      "accuracy": 0.9308,
+      "accuracy_pct": 93.08,
+      "precision_macro": 0.9304,
+      "recall_macro": 0.9322,
+      "f1_macro": 0.9308,
+      "f1_weighted": 0.93,
+      "confusion_matrix": [
+        [
+          490,
+          1,
+          5,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          447,
+          24,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          420,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          25,
+          0,
+          383,
+          83,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          65,
+          466,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          537
+        ]
+      ],
+      "per_class_f1": {
+        "WALKING": 0.9939,
+        "WALKING_UPSTAIRS": 0.946,
+        "WALKING_DOWNSTAIRS": 0.9666,
+        "SITTING": 0.8158,
+        "STANDING": 0.8622,
+        "LAYING": 1.0
+      }
+    }
+  },
+  "ONNX INT8 (Dynamic)": {
+    "metadata": {
+      "model": "ONNX INT8 (Dynamic)",
+      "precision": "INT8 Dynamic",
+      "size_bytes": 123881,
+      "size_mb": 0.1181,
+      "size_reduction_pct": 70.56,
+      "val_accuracy_pct": 99.07,
+      "val_macro_f1": 0.9914,
+      "val_acc_delta_pct": 0.0,
+      "test_accuracy_pct": 93.08,
+      "test_macro_f1": 0.9308,
+      "test_weighted_f1": 0.93,
+      "test_acc_delta_pct": 0.0,
+      "latency_median_ms": 0.7443,
+      "latency_mean_ms": 0.908,
+      "latency_p95_ms": 1.5456,
+      "latency_p99_ms": 1.8458,
+      "throughput_windows_sec": 1101.3
+    },
+    "latency_stats": {
+      "warm_up_iterations": 50,
+      "timed_iterations": 200,
+      "batch_size": 1,
+      "mean_latency_ms": 0.908,
+      "median_latency_ms": 0.7443,
+      "p90_latency_ms": 1.4206,
+      "p95_latency_ms": 1.5456,
+      "p99_latency_ms": 1.8458,
+      "min_latency_ms": 0.6614,
+      "max_latency_ms": 2.2248,
+      "std_latency_ms": 0.306,
+      "throughput_windows_per_sec": 1101.3
+    },
+    "validation_metrics": {
+      "accuracy": 0.9907,
+      "accuracy_pct": 99.07,
+      "precision_macro": 0.9922,
+      "recall_macro": 0.9909,
+      "f1_macro": 0.9914,
+      "f1_weighted": 0.9907,
+      "confusion_matrix": [
+        [
+          235,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          212,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          185,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          226,
+          13,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          266,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          264
+        ]
+      ],
+      "per_class_f1": {
+        "WALKING": 1.0,
+        "WALKING_UPSTAIRS": 1.0,
+        "WALKING_DOWNSTAIRS": 1.0,
+        "SITTING": 0.972,
+        "STANDING": 0.9761,
+        "LAYING": 1.0
+      }
+    },
+    "test_metrics": {
+      "accuracy": 0.9308,
+      "accuracy_pct": 93.08,
+      "precision_macro": 0.9304,
+      "recall_macro": 0.9322,
+      "f1_macro": 0.9308,
+      "f1_weighted": 0.93,
+      "confusion_matrix": [
+        [
+          490,
+          1,
+          5,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          447,
+          24,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          420,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          25,
+          0,
+          383,
+          83,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          65,
+          466,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          537
+        ]
+      ],
+      "per_class_f1": {
+        "WALKING": 0.9939,
+        "WALKING_UPSTAIRS": 0.946,
+        "WALKING_DOWNSTAIRS": 0.9666,
+        "SITTING": 0.8158,
+        "STANDING": 0.8622,
+        "LAYING": 1.0
+      }
+    }
+  },
+  "ONNX INT8 (Static QDQ)": {
+    "metadata": {
+      "model": "ONNX INT8 (Static QDQ)",
+      "precision": "INT8 Static QDQ",
+      "size_bytes": 127942,
+      "size_mb": 0.122,
+      "size_reduction_pct": 69.59,
+      "val_accuracy_pct": 99.07,
+      "val_macro_f1": 0.9914,
+      "val_acc_delta_pct": 0.0,
+      "test_accuracy_pct": 93.18,
+      "test_macro_f1": 0.9318,
+      "test_weighted_f1": 0.9311,
+      "test_acc_delta_pct": 0.1,
+      "latency_median_ms": 0.1212,
+      "latency_mean_ms": 0.1411,
+      "latency_p95_ms": 0.2439,
+      "latency_p99_ms": 0.5254,
+      "throughput_windows_sec": 7089.08
+    },
+    "latency_stats": {
+      "warm_up_iterations": 50,
+      "timed_iterations": 200,
+      "batch_size": 1,
+      "mean_latency_ms": 0.1411,
+      "median_latency_ms": 0.1212,
+      "p90_latency_ms": 0.1707,
+      "p95_latency_ms": 0.2439,
+      "p99_latency_ms": 0.5254,
+      "min_latency_ms": 0.0945,
+      "max_latency_ms": 1.579,
+      "std_latency_ms": 0.1179,
+      "throughput_windows_per_sec": 7089.08
+    },
+    "validation_metrics": {
+      "accuracy": 0.9907,
+      "accuracy_pct": 99.07,
+      "precision_macro": 0.9922,
+      "recall_macro": 0.9909,
+      "f1_macro": 0.9914,
+      "f1_weighted": 0.9907,
+      "confusion_matrix": [
+        [
+          235,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          212,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          185,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          226,
+          13,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          266,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          264
+        ]
+      ],
+      "per_class_f1": {
+        "WALKING": 1.0,
+        "WALKING_UPSTAIRS": 1.0,
+        "WALKING_DOWNSTAIRS": 1.0,
+        "SITTING": 0.972,
+        "STANDING": 0.9761,
+        "LAYING": 1.0
+      }
+    },
+    "test_metrics": {
+      "accuracy": 0.9318,
+      "accuracy_pct": 93.18,
+      "precision_macro": 0.9313,
+      "recall_macro": 0.9332,
+      "f1_macro": 0.9318,
+      "f1_weighted": 0.9311,
+      "confusion_matrix": [
+        [
+          490,
+          1,
+          5,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          447,
+          24,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          420,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          25,
+          0,
+          386,
+          80,
+          0
+        ],
+        [
+          0,
+          1,
+          0,
+          65,
+          466,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          537
+        ]
+      ],
+      "per_class_f1": {
+        "WALKING": 0.9939,
+        "WALKING_UPSTAIRS": 0.946,
+        "WALKING_DOWNSTAIRS": 0.9666,
+        "SITTING": 0.8195,
+        "STANDING": 0.8646,
+        "LAYING": 1.0
+      }
+    }
+  }
+}
