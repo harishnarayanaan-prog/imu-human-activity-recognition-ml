@@ -262,6 +262,110 @@ class CNN1DHAR:
         )
         return self
 
+    def fit_fixed_epochs(
+        self,
+        X_train: np.ndarray,
+        y_train: np.ndarray,
+        epochs: int,
+    ) -> "CNN1DHAR":
+        """Train CNN for a predetermined, fixed number of epochs without validation data.
+
+        Guarantees zero test-set leakage:
+        - Reinitializes the model architecture from scratch using random_seed.
+        - Accepts ONLY training arrays (does not accept validation or test arguments).
+        - Computes zero validation or test loss during training.
+        - Performs zero early stopping, checkpoint selection, or hyperparameter updates
+          based on unobserved or test data.
+        - Executes exactly `epochs` iterations, derived exclusively from prior validation.
+
+        Args:
+            X_train: Training sensor tensor of shape (N, 128, 9).
+            y_train: Training labels of shape (N,).
+            epochs: Exact number of training epochs to execute.
+
+        Returns:
+            self: The fitted CNN1DHAR model.
+        """
+        if epochs < 1:
+            raise ValueError(f"epochs must be >= 1, got {epochs}")
+
+        start_t = time.perf_counter()
+
+        # Reinitialize model from scratch to guarantee no weight carryover
+        torch.manual_seed(self.random_seed)
+        self.model = Conv1DNet(
+            in_channels=self.in_channels,
+            num_classes=self.num_classes,
+        ).to(self.device)
+
+        # Handle label indexing: ensure 0-indexed (0..num_classes-1)
+        if y_train.min() == 1:
+            y_train_zero = y_train - 1
+            self._label_offset = 1
+        else:
+            y_train_zero = y_train.copy()
+            self._label_offset = 0
+
+        t_X_train = self._prepare_tensor(X_train)
+        t_y_train = torch.tensor(y_train_zero, dtype=torch.long)
+
+        train_dataset = TensorDataset(t_X_train, t_y_train)
+        train_loader = DataLoader(
+            train_dataset, batch_size=self.batch_size, shuffle=True
+        )
+
+        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.AdamW(
+            self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        )
+
+        # Initialize history tracking training loss only
+        self.history_ = {
+            "train_loss": [],
+            "val_loss": [],
+            "val_acc": [],
+        }
+
+        logger.info(
+            "Starting fixed-epoch 1D CNN training for %d epochs (device: %s, params: %d)...",
+            epochs,
+            self.device,
+            self.count_parameters(),
+        )
+
+        for epoch in range(1, epochs + 1):
+            self.model.train()
+            running_loss = 0.0
+            for batch_x, batch_y in train_loader:
+                batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
+                optimizer.zero_grad()
+                logits = self.model(batch_x)
+                loss = criterion(logits, batch_y)
+                loss.backward()
+                optimizer.step()
+                running_loss += loss.item() * len(batch_y)
+
+            train_loss = running_loss / len(train_dataset)
+            self.history_["train_loss"].append(train_loss)
+
+            if epoch % 5 == 0 or epoch == 1 or epoch == epochs:
+                logger.info(
+                    "Epoch [%2d/%2d] - Train Loss: %.4f (Fixed schedule, zero test/val leakage)",
+                    epoch,
+                    epochs,
+                    train_loss,
+                )
+
+        self.best_epoch_ = epochs
+        self.is_fitted_ = True
+        self.training_time_sec_ = time.perf_counter() - start_t
+        logger.info(
+            "Fixed-epoch 1D CNN training complete in %.2fs (%d epochs executed)",
+            self.training_time_sec_,
+            epochs,
+        )
+        return self
+
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Predict activity labels (1..6)."""
         if not self.is_fitted_:

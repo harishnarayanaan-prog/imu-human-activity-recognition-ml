@@ -2,7 +2,7 @@
 
 [![Python 3.14](https://img.shields.io/badge/python-3.14-blue.svg)](https://www.python.org/downloads/)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
-[![Tests: 54 Passed](https://img.shields.io/badge/tests-54%20passed-brightgreen.svg)]()
+[![Tests: 58 Passed](https://img.shields.io/badge/tests-58%20passed-brightgreen.svg)]()
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ---
@@ -201,7 +201,7 @@ python -m src.evaluation.metrics
 python scripts/evaluate_final_test.py
 ```
 
-### Step 6: Execute Automated Test Suite (49 Tests)
+### Step 6: Execute Automated Test Suite (58 Tests)
 ```powershell
 pytest -q
 ```
@@ -231,18 +231,18 @@ All reported metrics are genuine empirical values directly evaluated on physical
 
 | Model Architecture | Input Features | Accuracy | Macro Precision | Macro Recall | Macro F1 | Weighted F1 | Inference Latency | Model Size | Training Duration |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1D Deep CNN** | Raw 9-Ch Waveforms | **99.07%** | **0.9922** | **0.9909** | **0.9914** | **0.9907** | 0.163 ms / win | **0.40 MB** | 138.64 s |
-| **Random Forest** | 204 Engineered Feats | **97.86%** | 0.9801 | 0.9761 | 0.9775 | 0.9785 | **0.017 ms / win** | 6.06 MB | 6.38 s |
-| **SVM (RBF Kernel)** | 204 Scaled Feats | **96.29%** | 0.9653 | 0.9597 | 0.9611 | 0.9630 | 0.225 ms / win | 2.27 MB | **2.98 s** |
+| **1D Deep CNN** | Raw 9-Ch Waveforms | **99.07%** | **0.9922** | **0.9909** | **0.9914** | **0.9907** | 0.198 ms / win | **0.40 MB** | 147.01 s |
+| **Random Forest** | 204 Engineered Feats | **97.86%** | 0.9801 | 0.9761 | 0.9775 | 0.9785 | **0.025 ms / win** | 6.06 MB | 6.38 s |
+| **SVM (RBF Kernel)** | 204 Scaled Feats | **96.29%** | 0.9653 | 0.9597 | 0.9611 | 0.9630 | 0.276 ms / win | 2.27 MB | **4.01 s** |
 
 ### B. Corrected Official Test-Set Benchmark (2,947 Windows, 9 Unseen Subjects)
 *Methodology-corrected re-evaluation on complete 7,352 training samples, evaluated on held-out test partition.*
 
 | Model Architecture | Input Modality | Test Accuracy | Macro Precision | Macro Recall | Macro F1 | Weighted F1 | Test Latency | Model Size | Trainable Params |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1D Deep CNN** | Raw 9-Ch Waveforms | **93.38%** | **0.9354** | **0.9364** | **0.9355** | **0.9336** | 0.163 ms / win | **0.40 MB** | 102,598 |
-| **SVM (RBF Kernel)** | 204 Scaled Feats | **92.20%** | 0.9230 | 0.9215 | 0.9217 | 0.9218 | 0.264 ms / win | 2.46 MB | Non-param |
-| **Random Forest** | 204 Engineered Feats | **91.38%** | 0.9148 | 0.9113 | 0.9124 | 0.9136 | **0.017 ms / win** | 6.92 MB | Non-param |
+| **1D Deep CNN** | Raw 9-Ch Waveforms | **93.08%** | **0.9304** | **0.9322** | **0.9308** | **0.9300** | 0.157 ms / win | **0.40 MB** | 102,598 |
+| **SVM (RBF Kernel)** | 204 Scaled Feats | **92.20%** | 0.9230 | 0.9215 | 0.9217 | 0.9218 | 0.341 ms / win | 2.46 MB | Non-param |
+| **Random Forest** | 204 Engineered Feats | **91.38%** | 0.9148 | 0.9113 | 0.9124 | 0.9136 | **0.025 ms / win** | 6.92 MB | Non-param |
 
 ---
 
@@ -264,7 +264,7 @@ All reported metrics are genuine empirical values directly evaluated on physical
 
 ## 11. Automated Testing Results
 
-All 54 automated tests execute cleanly with `pytest`:
+All 58 automated tests execute cleanly with `pytest`:
 ```
 ============================= test session starts =============================
 platform win32 -- Python 3.14.3, pytest-9.2.0, pluggy-1.7.0
@@ -272,7 +272,9 @@ rootdir: D:\Projects\Wearable-Sensor-Platform\imu-human-activity-recognition-ml
 configfile: pytest.ini
 testpaths: tests
 plugins: anyio-4.16.0, platformdirs-4.14.8
-collected 54 items
+collected 58 items
+
+tests\test_final_training_leakage.py ....                                [ 41%]
 
 tests\test_download.py ......                                            [ 11%]
 tests\test_end_to_end_pipeline.py ...                                    [ 16%]
@@ -286,7 +288,7 @@ tests\test_simulation.py .....                                           [ 85%]
 tests\test_splitting.py ...                                              [ 90%]
 tests\test_validation.py .....                                           [100%]
 
-======================= 54 passed, 1 warning in 12.60s ========================
+======================= 58 passed, 11 warnings in 43.74s ========================
 ```
 
 See [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/final_repository_audit.md) for the comprehensive 12-criterion technical audit report.
@@ -299,6 +301,7 @@ See [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Plat
 2. **Waist Placement Only:** Data was recorded strictly from a waist-mounted smartphone pouch; kinematics differ from wrist-worn wearables.
 3. **Controlled Protocol:** Activities were performed under scripted laboratory guidance rather than free-living unconstrained behavior.
 4. **No Claim of Hardware Deployment:** Experiments are validated on standardized benchmark datasets; no physical microcontroller or custom sensor PCB fabrication is claimed.
+5. **Methodology-Corrected Re-Evaluation Disclosure:** Because official test metrics were observed in Day 2, and subsequently audited in Day 2.1 to remove both preprocessing scaler leakage and CNN validation-monitoring test leakage, the test results represent a rigorous methodology-corrected re-evaluation rather than an untouched blind test.
 
 ---
 
@@ -307,5 +310,5 @@ See [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Plat
 - [x] **Day 1: Data Engineering & Foundation Pipeline** (Automated ingestion, tensor stacking, train-only normalization, exploration report, 29 passing tests).
 - [x] **Day 2: Feature Engineering & Model Evaluation** (204 features, subject-wise splitting, Random Forest, SVM, PyTorch 1D CNN, frozen test evaluation, 44 passing tests).
 - [x] **Day 2.1: Methodology Audit & Leakage Correction** (Zero-leakage unscaled splitting, internal-only scaler fitting, test re-evaluation, 49 passing tests).
-- [x] **Full Repository Repair & Validation Audit** (Relocation to Drive D, 54 passing tests, zero hardcoded paths, exhaustive validation report [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/final_repository_audit.md)).
+- [x] **Full Repository Repair & Validation Audit** (Relocation to Drive D, 58 passing tests, zero hardcoded paths, exhaustive validation report [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/final_repository_audit.md)).
 - [ ] **Day 3: Model Optimization & Embedded Deployment Simulation** (Quantization to INT8/FP16, ONNX export, micro-controller latency profiling, real-time streaming pipeline emulation; see [docs/day3_plan.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/docs/day3_plan.md)).

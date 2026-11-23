@@ -91,12 +91,19 @@ def run_corrected_validation(
     rf_val_preds = rf_val.predict(X_val_feat)
     rf_val_lat = (time.perf_counter() - t0) * 1000.0 / len(y_val)
 
+    # Measure actual serialized size
+    val_rf_path = repo_root / "models" / "rf_val.joblib"
+    val_rf_path.parent.mkdir(parents=True, exist_ok=True)
+    rf_val.save(val_rf_path)
+    rf_val_size_mb = val_rf_path.stat().st_size / (1024 * 1024)
+    val_rf_path.unlink(missing_ok=True)
+
     rf_metrics = compute_benchmark_metrics(
         y_val,
         rf_val_preds,
         latency_ms=rf_val_lat,
         training_time_sec=rf_val.training_time_sec_,
-        model_size_mb=6.06,
+        model_size_mb=rf_val_size_mb,
         n_params=0,
     )
     rf_metrics["model"] = "Random Forest"
@@ -116,12 +123,17 @@ def run_corrected_validation(
     svm_val_preds = svm_val.predict(X_val_feat)
     svm_val_lat = (time.perf_counter() - t0) * 1000.0 / len(y_val)
 
+    val_svm_path = repo_root / "models" / "svm_val.joblib"
+    svm_val.save(val_svm_path)
+    svm_val_size_mb = val_svm_path.stat().st_size / (1024 * 1024)
+    val_svm_path.unlink(missing_ok=True)
+
     svm_metrics = compute_benchmark_metrics(
         y_val,
         svm_val_preds,
         latency_ms=svm_val_lat,
         training_time_sec=svm_val.training_time_sec_,
-        model_size_mb=2.27,
+        model_size_mb=svm_val_size_mb,
         n_params=0,
     )
     svm_metrics["model"] = "SVM (RBF)"
@@ -149,12 +161,17 @@ def run_corrected_validation(
     cnn_val_preds = cnn_val.predict(X_val_scaled)
     cnn_val_lat = (time.perf_counter() - t0) * 1000.0 / len(y_val)
 
+    val_cnn_path = repo_root / "models" / "cnn_val.pt"
+    cnn_val.save(val_cnn_path)
+    cnn_val_size_mb = val_cnn_path.stat().st_size / (1024 * 1024)
+    val_cnn_path.unlink(missing_ok=True)
+
     cnn_metrics = compute_benchmark_metrics(
         y_val,
         cnn_val_preds,
         latency_ms=cnn_val_lat,
         training_time_sec=cnn_val.training_time_sec_,
-        model_size_mb=0.40,
+        model_size_mb=cnn_val_size_mb,
         n_params=cnn_val.count_parameters(),
     )
     cnn_metrics["model"] = "1D CNN"
@@ -299,19 +316,22 @@ def run_corrected_final_training(
     print(classification_report(y_test, svm_test_preds, target_names=ACTIVITY_NAMES, digits=4))
 
     # Final Model C: 1D Deep CNN (7,352 samples)
-    logger.info("Training Final 1D CNN on full official training set (epochs: %d)...", best_cnn_epochs or 15)
-    epochs_to_run = max(12, min(30, (best_cnn_epochs or 15) + 3))
+    # Fixed epoch count derived strictly from the internal validation run.
+    # Zero test arrays are passed to the training routine.
+    fixed_epochs = best_cnn_epochs if (best_cnn_epochs and best_cnn_epochs > 0) else 32
+    logger.info(
+        "Training Final 1D CNN on full official training set (fixed epochs: %d, derived from validation)...",
+        fixed_epochs,
+    )
     cnn_final = CNN1DHAR(
         in_channels=9,
         num_classes=6,
         batch_size=64,
         lr=0.001,
-        max_epochs=epochs_to_run,
-        patience=epochs_to_run + 5,
         random_seed=42,
     )
-    # Train on full train, using test purely as passive observer for loss logging (no early stopping on test)
-    cnn_final.fit(X_train_scaled, y_train, X_test_scaled, y_test)
+    # Train strictly on full official training windows with fixed epochs; NO test data passed
+    cnn_final.fit_fixed_epochs(X_train_scaled, y_train, epochs=fixed_epochs)
     cnn_final.save(models_dir / "cnn_1d.pt")
 
     t0 = time.perf_counter()
