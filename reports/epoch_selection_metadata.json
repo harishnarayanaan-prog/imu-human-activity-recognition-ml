@@ -9,5 +9,5 @@
   ],
   "training_subjects_count": 17,
   "evaluation_protocol": "fixed_epochs_zero_test_leakage",
-  "timestamp": "2026-11-23T17:43:53Z"
+  "timestamp": "2026-11-23T17:53:31Z"
 }

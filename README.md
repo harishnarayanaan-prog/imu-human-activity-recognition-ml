@@ -306,8 +306,8 @@ See [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Plat
 
 ## 13. Project Roadmap
 
-- [x] **Day 1: Data Engineering & Foundation Pipeline** (Automated ingestion, tensor stacking, train-only normalization, exploration report, 29 passing tests).
-- [x] **Day 2: Feature Engineering & Model Evaluation** (204 features, subject-wise splitting, Random Forest, SVM, PyTorch 1D CNN, frozen test evaluation, 44 passing tests).
-- [x] **Day 2.1: Methodology Audit & Leakage Correction** (Zero-leakage unscaled splitting, internal-only scaler fitting, test re-evaluation, 49 passing tests).
-- [x] **Full Repository Repair & Validation Audit** (Relocation to Drive D, 61 passing tests, zero hardcoded paths, exhaustive validation report [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/final_repository_audit.md)).
+- [x] **Day 1: Data Engineering & Foundation Pipeline** (Automated ingestion, tensor stacking, train-only normalization, exploration report; 29 passing tests at historical milestone).
+- [x] **Day 2: Feature Engineering & Model Evaluation** (204 features, subject-wise splitting, Random Forest, SVM, PyTorch 1D CNN, frozen test evaluation; 44 passing tests at historical milestone).
+- [x] **Day 2.1: Methodology Audit & Leakage Correction** (Zero-leakage unscaled splitting, internal-only scaler fitting, test re-evaluation; 49 passing tests at historical milestone).
+- [x] **Full Repository Repair & Consistency Audit** (Relocation to Drive D, current comprehensive suite of 61 passing tests, zero hardcoded paths, exhaustive validation report [reports/final_repository_audit.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/reports/final_repository_audit.md)).
 - [ ] **Day 3: Model Optimization & Embedded Deployment Simulation** (Quantization to INT8/FP16, ONNX export, micro-controller latency profiling, real-time streaming pipeline emulation; see [docs/day3_plan.md](file:///D:/Projects/Wearable-Sensor-Platform/imu-human-activity-recognition-ml/docs/day3_plan.md)).
