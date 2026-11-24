@@ -316,12 +316,17 @@ The real-time streaming emulator (`src/deployment/streaming.py`) simulates a rea
 
 Based on detailed memory modeling (see [reports/edge_deployment_feasibility.md](reports/edge_deployment_feasibility.md)):
 
-| Target Platform | Core / Architecture | Clock Speed | SRAM | Flash | Feasibility (Analytical) | Estimated Latency | Working Memory (Est.) |
+The estimated total Flash footprint for an integrated embedded firmware build is **205 to 275 KB** (127.94 KB static QDQ model weights, ~25–45 KB runtime inference engine kernels, and ~50–100 KB board support package/HAL/BLE stack). Consequently, Flash headroom varies significantly across hardware configurations:
+- **512 KB Flash configurations** (e.g., STM32F401CE) offer abundant headroom (40–54% Flash utilization, leaving 237–307 KB free for application code and OTA update staging).
+- **256 KB Flash configurations** (e.g., STM32F401CC) operate under critical constraints: the lower estimate (205 KB) leaves only ~51 KB free, while the upper estimate (275 KB) **overflows available Flash by ~19 KB**, making 256 KB configurations insufficient without aggressive dead-code elimination, stripping unused runtime operators, or utilizing external SPI Flash.
+
+| Target Platform | Core / Architecture | Clock Speed | SRAM | Flash | Feasibility (Analytical) | Estimated Latency | Working Memory & Flash Budget (Est.) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Espressif ESP32-S3** | Dual Xtensa LX7 + SIMD | 240 MHz | 512 KB | 4–16 MB | **Highly Feasible** | 12–25 ms | ~20 KB SRAM (~96% free), ~210 KB Flash |
-| **Nordic nRF52840** | ARM Cortex-M4F | 64 MHz | 256 KB | 1 MB | **Highly Feasible** | 45–90 ms | ~20 KB SRAM (~92% free), ~210 KB Flash |
-| **Raspberry Pi RP2040** | Dual ARM Cortex-M0+ | 133 MHz | 264 KB | 2 MB | **Feasible (INT8)** | 80–160 ms | ~20 KB SRAM (~92% free), ~210 KB Flash |
-| **STM32F401 (BlackPill)** | ARM Cortex-M4F | 84 MHz | 64–96 KB | 256–512 KB | **Feasible** | 35–70 ms | ~20 KB SRAM (leaves 44–76 KB), ~210 KB Flash |
+| **Espressif ESP32-S3** | Dual Xtensa LX7 + SIMD | 240 MHz | 512 KB | 4–16 MB | **Highly Feasible** | 12–25 ms | ~20 KB SRAM (~96% free), 205–275 KB Flash (<7% utilized) |
+| **Nordic nRF52840** | ARM Cortex-M4F | 64 MHz | 256 KB | 1 MB | **Highly Feasible** | 45–90 ms | ~20 KB SRAM (~92% free), 205–275 KB Flash (~21–27% utilized) |
+| **Raspberry Pi RP2040** | Dual ARM Cortex-M0+ | 133 MHz | 264 KB | 2 MB | **Feasible (INT8)** | 80–160 ms | ~20 KB SRAM (~92% free), 205–275 KB Flash (~10–14% utilized) |
+| **STM32F401CE (512 KB)** | ARM Cortex-M4F | 84 MHz | 96 KB | 512 KB | **Highly Feasible** | 35–70 ms | ~20 KB SRAM (leaves ~76 KB), 205–275 KB Flash (40–54% utilized, ample headroom) |
+| **STM32F401CC (256 KB)** | ARM Cortex-M4F | 84 MHz | 64 KB | 256 KB | **Constrained / Marginal** | 35–70 ms | ~20 KB SRAM (leaves ~44 KB), 205–275 KB Flash (80–107% utilized; upper bound overflows Flash) |
 
 *All microcontroller estimates are analytical projections based on clock cycles and instruction architectures; no physical bare-metal hardware deployment is claimed.*
 

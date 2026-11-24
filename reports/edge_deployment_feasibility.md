@@ -61,29 +61,40 @@ If quantized to 8-bit integer:
 $$\text{Buffer Size (Int8)} = 128 \times 9 \times 1 \text{ bytes} = 1,152 \text{ bytes} \approx 1.13 \text{ KB}$$
 
 ### 3.2 Peak Activation Buffer Math (Layer-by-Layer)
-In a feedforward convolutional network, memory can be reused across layers using an alternating double buffer (ping-pong scratchpad):
+In a feedforward convolutional network, memory can be reused across layers using an alternating double buffer (ping-pong scratchpad). 
 
-| Layer Stage | Layer Configuration | Output Tensor Dimensions | Activation Memory (Float32) | Activation Memory (INT8 Quantized) |
+The exact layer dimensions of `Conv1DNet` (`src/models/cnn_1d.py`) are:
+- `conv_block1`: `Conv1d(9 -> 64, kernel=5, pad=2)` $\rightarrow$ `BatchNorm1d(64)` $\rightarrow$ `ReLU` $\rightarrow$ `MaxPool1d(kernel=2)`
+- `conv_block2`: `Conv1d(64 -> 128, kernel=5, pad=2)` $\rightarrow$ `BatchNorm1d(128)` $\rightarrow$ `ReLU` $\rightarrow$ `MaxPool1d(kernel=2)`
+- `conv_block3`: `Conv1d(128 -> 128, kernel=3, pad=1)` $\rightarrow$ `BatchNorm1d(128)` $\rightarrow$ `ReLU` (no pooling)
+- `gap`: `AdaptiveAvgPool1d(1)` $\rightarrow$ `.squeeze(-1)`
+- `classifier`: `Linear(128 -> 64)` $\rightarrow$ `ReLU` $\rightarrow$ `Linear(64 -> 6)`
+
+| Layer Stage | Layer Configuration | Intermediate / Output Dimensions | Activation Memory (Float32) | Activation Memory (INT8 Quantized) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Input Window** | 9 channels, 128 timesteps | $(1, 9, 128)$ | 4,608 bytes (4.50 KB) | 1,152 bytes (1.13 KB) |
-| **Conv Block 1** | 64 channels, 64 timesteps (MaxPool) | $(1, 64, 64)$ | 16,384 bytes (16.00 KB) | 4,096 bytes (4.00 KB) |
-| **Conv Block 2** | 128 channels, 32 timesteps (MaxPool) | $(1, 128, 32)$ | 16,384 bytes (16.00 KB) | 4,096 bytes (4.00 KB) |
-| **Conv Block 3** | 128 channels, 32 timesteps | $(1, 128, 32)$ | 16,384 bytes (16.00 KB) | 4,096 bytes (4.00 KB) |
-| **Global Avg Pool**| GAP over 32 timesteps | $(1, 128)$ | 512 bytes (0.50 KB) | 128 bytes (0.13 KB) |
+| **Conv Block 1 (Pre-Pool)** | Conv1D $9 \rightarrow 64$, pad=2 | $(1, 64, 128)$ | 32,768 bytes (32.00 KB) | 8,192 bytes (8.00 KB) |
+| **Conv Block 1 (Post-Pool)**| MaxPool1D $k=2, s=2$ | $(1, 64, 64)$ | 16,384 bytes (16.00 KB) | 4,096 bytes (4.00 KB) |
+| **Conv Block 2 (Pre-Pool)** | Conv1D $64 \rightarrow 128$, pad=2 | $(1, 128, 64)$ | 32,768 bytes (32.00 KB) | 8,192 bytes (8.00 KB) |
+| **Conv Block 2 (Post-Pool)**| MaxPool1D $k=2, s=2$ | $(1, 128, 32)$ | 16,384 bytes (16.00 KB) | 4,096 bytes (4.00 KB) |
+| **Conv Block 3 (Output)** | Conv1D $128 \rightarrow 128$, pad=1 | $(1, 128, 32)$ | 16,384 bytes (16.00 KB) | 4,096 bytes (4.00 KB) |
+| **Global Avg Pool** | GAP over 32 timesteps | $(1, 128)$ | 512 bytes (0.50 KB) | 128 bytes (0.13 KB) |
 | **Dense Layer 1** | Linear $128 \rightarrow 64$ | $(1, 64)$ | 256 bytes (0.25 KB) | 64 bytes (0.06 KB) |
-| **Output Logits** | Linear $64 \rightarrow 6$ | $(1, 6)$ | 24 bytes (0.02 KB) | 24 bytes (0.02 KB) |
+| **Output Logits** | Linear $64 \rightarrow 6$ | $(1, 6)$ | 24 bytes (0.02 KB) | 6 bytes (0.01 KB) |
 
-$$\text{Peak Activation Ping-Pong Buffer (Float32)} = 16.00 \text{ KB} + 16.00 \text{ KB} = 32.00 \text{ KB}$$
-$$\text{Peak Activation Ping-Pong Buffer (INT8)} = 4.00 \text{ KB} + 4.00 \text{ KB} = 8.00 \text{ KB}$$
+#### Activation Buffer Allocation Dynamics:
+- **Pre-Pooling Intermediate Peak:** Before spatial downsampling in `conv_block1` and `conv_block2`, the convolution output occupies $64 \times 128 = 8,192 \text{ elements}$ (8.00 KB INT8 / 32.00 KB FP32).
+- **Post-Pooling Output Buffer:** Following MaxPool1D, the output occupies $64 \times 64 = 4,096 \text{ elements}$ (4.00 KB INT8 / 16.00 KB FP32).
+- **Ping-Pong Buffer Strategy:** An alternating double-buffer must accommodate the pre-pooling tensor (8.00 KB INT8) in one buffer while reading the input (1.13 KB or 4.50 KB) or previous layer output (4.00 KB) from the other buffer. Total ping-pong buffer: **8.00 KB to 12.00 KB** for INT8 (or **32.00 KB to 48.00 KB** for FP32).
 
 ### 3.3 Operator Scratchpad & Runtime Overhead
-- **Operator Scratchpad (CMSIS-NN / TFLite Micro):** `arm_convolve_1x_s8` requires a matrix-multiplication scratch buffer proportional to $2 \times \text{in\_channels} \times \text{kernel\_size} = 2 \times 128 \times 5 = 1,280$ bytes ($\approx 1.25$ KB), extending to $\approx 2.50$ KB with SIMD unrolling.
+- **Operator Scratchpad (CMSIS-NN / TFLite Micro):** `arm_convolve_1x_s8` requires a matrix-multiplication scratch buffer proportional to $2 \times \text{in\_channels} \times \text{kernel\_size} = 2 \times 128 \times 5 = 1,280$ bytes ($\approx 1.25$ KB), extending to $\approx 2.50$ KB with SIMD 4-lane unrolling.
 - **Quantization Parameters:** Scale multipliers, zero-points, and 32-bit bias terms across 3 Conv and 2 Dense layers occupy $\approx 0.30$ to $0.50$ KB.
 - **Runtime Tensor Arena Overhead:** Framework control headers, tensor metadata structures, and 16-byte alignment pads require $\approx 2.00$ to $4.00$ KB.
 - **Application Task Stack:** A dedicated FreeRTOS task stack for sensor acquisition and inference requires $\approx 2.00$ to $4.00$ KB.
 
 ### 3.4 Total Working Memory Budget (Preliminary Analytical Estimates)
-- **Minimum Inference Arena (INT8):** $4.50\text{ KB (Input)} + 8.00\text{ KB (Activations)} + 1.50\text{ KB (Scratchpad)} + 0.50\text{ KB (Quant Params)} + 2.00\text{ KB (Arena Overhead)} \approx \mathbf{16.50\text{ KB}}$.
+- **Minimum Inference Arena (INT8):** $4.50\text{ KB (Input)} + 8.00\text{ KB (Activations)} + 1.50\text{ KB (Scratchpad)} + 0.50\text{ KB (Quant Params)} + 2.00\text{ KB (Arena Overhead)} \approx \mathbf{16.50\text{ to } 19.50\text{ KB}}$.
 - **Full System Working SRAM (INT8 + RTOS):** $16.50\text{ KB} + 3.00\text{ KB (Task Stack)} \approx \mathbf{19.50\text{ to } 24.00\text{ KB}}$.
 - **Minimum Inference Arena (FP32):** $4.50\text{ KB (Input)} + 32.00\text{ KB (Activations)} + 3.00\text{ KB (Overhead)} \approx \mathbf{39.50\text{ to } 44.50\text{ KB}}$.
 
@@ -96,13 +107,27 @@ $$\text{Peak Activation Ping-Pong Buffer (INT8)} = 4.00 \text{ KB} + 4.00 \text{
 
 All feasibility verdicts represent **analytical engineering estimates** based on memory math, CPU instruction capabilities, and clock frequency. **No physical microcontroller flashing or bare-metal execution is claimed.**
 
-| Target Architecture | Processor Core & Frequency | Typical SRAM | Typical Flash | Weight Storage | Feasibility Verdict (Analytical) | Key Constraints & Engineering Assessment |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Espressif ESP32-S3** | Dual Xtensa LX7 @ 240 MHz (with Vector Ext) | 512 KB Internal | 4 MB – 16 MB QSPI | Flash XIP | **Highly Feasible (Estimated)** | Abundant RAM (512 KB vs. ~20 KB required, ~96% free). Vector instructions accelerate 1D convolutions. |
-| **Nordic nRF52840** | ARM Cortex-M4F @ 64 MHz (with FPU) | 256 KB | 1 MB Internal | Flash XIP | **Highly Feasible (Estimated)** | Industry standard wearable BLE SoC. INT8 model consumes ~12% of Flash; working SRAM consumes ~8% of RAM. |
-| **STM32F401 (BlackPill)** | ARM Cortex-M4 @ 84 MHz | 64–96 KB | 256–512 KB | Flash XIP | **Feasible (Estimated)** | Working SRAM (~20 KB) leaves 44–76 KB for RTOS and peripheral drivers. Flash consumes ~210 KB total. |
-| **Raspberry Pi RP2040**| Dual ARM Cortex-M0+ @ 133 MHz (No FPU) | 264 KB | 2 MB External | Flash XIP | **Feasible INT8 Only (Estimated)** | Lack of hardware FPU makes FP32 unviable; INT8 integer arithmetic is required. |
-| **Microchip ATmega328P** | 8-bit AVR @ 16 MHz | 2 KB | 32 KB | Internal Flash | **Infeasible (Analytical)** | 2 KB RAM cannot accommodate 16–20 KB buffer; 32 KB Flash cannot hold 124 KB model. |
+### Flash Budget Analysis: 256 KB vs. 512 KB STM32 Configurations
+The estimated total Flash requirement for a complete embedded firmware build is **205 to 275 KB**:
+- **INT8 Static QDQ Model Weights:** **127.94 KB** (measured standalone protobuf footprint; ~102.6 KB raw weights).
+- **Compiled Inference Engine Kernels (CMSIS-NN / TFLite Micro):** **~25 to 45 KB** (compiled with `-Os`).
+- **Board Support Package, HAL & BLE Stack:** **~50 to 100 KB**.
+
+> [!WARNING]
+> **Critical Flash Constraint on 256 KB Microcontrollers:**
+> For microcontrollers with **256 KB Flash** (such as STM32F401xB/C or STM32F401CC), the 205–275 KB requirement is critically tight:
+> - At the lower estimate (205 KB), it consumes ~80% of Flash, leaving only ~51 KB free for bootloader, application logic, and BLE stack.
+> - At the upper estimate (275 KB), it **exceeds the 256 KB Flash capacity by ~19 KB**, making 256 KB configurations insufficient without aggressive dead-code elimination, disabling unused runtime operators, or utilizing external SPI Flash.
+> In contrast, configurations with **512 KB Flash** (such as BlackPill STM32F401CE) operate with abundant headroom (40% to 54% Flash utilization, leaving 237–307 KB free).
+
+| Target Architecture | Processor Core & Frequency | Typical SRAM | Typical Flash | Feasibility Verdict (Analytical) | Key Constraints & Engineering Assessment |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Espressif ESP32-S3** | Dual Xtensa LX7 @ 240 MHz (with Vector Ext) | 512 KB Internal | 4 MB – 16 MB QSPI | **Highly Feasible (Estimated)** | Abundant RAM (512 KB vs. ~20 KB required, ~96% free). Vector instructions accelerate 1D convolutions. |
+| **Nordic nRF52840** | ARM Cortex-M4F @ 64 MHz (with FPU) | 256 KB | 1 MB Internal | **Highly Feasible (Estimated)** | Industry standard wearable BLE SoC. INT8 model consumes ~13% of Flash; working SRAM consumes ~8% of RAM. |
+| **STM32F401CE (512 KB Flash)** | ARM Cortex-M4 @ 84 MHz | 96 KB | 512 KB | **Highly Feasible (Estimated)** | Abundant headroom: 512 KB Flash easily accommodates 205–275 KB total firmware (~40–54% utilization). 96 KB SRAM leaves ~76 KB free. |
+| **STM32F401CC (256 KB Flash)** | ARM Cortex-M4 @ 84 MHz | 64 KB | 256 KB | **Constrained / Marginal (Estimated)** | **TIGHT HEADROOM:** 205–275 KB firmware consumes 80–107% of Flash. Upper estimate overflows Flash by ~19 KB; requires aggressive kernel stripping or external Flash. |
+| **Raspberry Pi RP2040**| Dual ARM Cortex-M0+ @ 133 MHz (No FPU) | 264 KB | 2 MB External | **Feasible INT8 Only (Estimated)** | Lack of hardware FPU makes FP32 unviable; INT8 integer arithmetic fits easily in 264 KB SRAM and 2 MB Flash. |
+| **Microchip ATmega328P** | 8-bit AVR @ 16 MHz | 2 KB | 32 KB | **Infeasible (Analytical)** | 2 KB RAM cannot accommodate 16–20 KB buffer; 32 KB Flash cannot hold 124 KB model. |
 
 ---
 

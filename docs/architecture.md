@@ -2,7 +2,7 @@
 
 **Project:** Human Activity Recognition from Wearable IMU Sensor Data
 **Repository:** `https://github.com/harishnarayanaan-prog/imu-human-activity-recognition-ml`
-**Storage Root:** `D:\Projects\Wearable-Sensor-Platform\imu-human-activity-recognition-ml`
+**Workspace Root:** `imu-human-activity-recognition-ml`
 **Execution Environment:** Python 3.14.3 (CPU execution confirmed)
 
 ---
@@ -107,8 +107,8 @@ flowchart TD
 1. **Random Forest Classifier (`src/models/random_forest.py`):** 150 trees, max depth 25, Gini impurity.
 2. **Support Vector Machine (`src/models/svm.py`):** RBF kernel, $C=10.0$, scale gamma.
 3. **1D Deep CNN (`src/models/cnn_1d.py`):**
-   - 3 Convolutional blocks with BatchNorm, ReLU, Dropout (0.3), and MaxPool.
-   - Global Average Pooling + 2 Fully Connected layers with Dropout (0.5).
+   - 3 Convolutional blocks: Conv Block 1 (`Conv1d(9 -> 64, k=5, p=2)` + BatchNorm + ReLU + MaxPool `k=2`), Conv Block 2 (`Conv1d(64 -> 128, k=5, p=2)` + BatchNorm + ReLU + MaxPool `k=2`), Conv Block 3 (`Conv1d(128 -> 128, k=3, p=1)` + BatchNorm + ReLU).
+   - Global Average Pooling (`AdaptiveAvgPool1d(1)`) + 2 Fully Connected layers (`Linear(128 -> 64)` + ReLU + `Linear(64 -> 6)`) with Dropout (0.35, 0.175).
    - Parameters: **102,598**.
    - **`fit_fixed_epochs(X_train, y_train, epochs)`:** Guarantees zero test-set leakage by training strictly for fixed validation-derived epochs (32) without computing validation or test loss.
 

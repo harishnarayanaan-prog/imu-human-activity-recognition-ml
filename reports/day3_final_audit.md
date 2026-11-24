@@ -56,7 +56,7 @@ Before commencing export and optimization, the baseline model and dataset integr
   "baseline_checkpoint": "models/cnn_1d.pt",
   "sha256": "19c5ba643e17f2cada7a446c536b154a00ad7affaadda43fae67e8f7c96a55ba",
   "size_bytes": 420729,
-  "architecture": "CNN1D (3 Conv1D layers [64, 128, 256], GlobalAvgPool1D, 2 Linear layers [128, 6])",
+  "architecture": "CNN1D (3 Conv1D layers [64, 128, 128], GlobalAvgPool1D, 2 Linear layers [128 -> 64 -> 6])",
   "trainable_parameters": 102598,
   "baseline_val_accuracy": 0.9907,
   "baseline_test_accuracy": 0.9308,
@@ -116,15 +116,26 @@ A crucial architectural finding is that **Dynamic INT8 (1.105 ms mean) is ~10x s
 > All figures below represent preliminary analytical estimates derived from parameter sizing, tensor geometry, and standard runtime arena conventions. Exact memory and latency can only be definitively established by compiling for a specific embedded target with a cross-compiler (e.g. `arm-none-eabi-gcc`). No physical microcontroller deployment has been performed.
 
 ### Comprehensive RAM Breakdown (Analytical Estimate)
+The exact layer dimensions of `Conv1DNet` (`src/models/cnn_1d.py`) are:
+- `conv_block1`: `Conv1d(9 -> 64, kernel=5, pad=2)` $\rightarrow$ `BatchNorm1d(64)` $\rightarrow$ `ReLU` $\rightarrow$ `MaxPool1d(kernel=2)`
+  - Pre-pool tensor: `(1, 64, 128)` = 8,192 elements (**8.00 KB INT8 / 32.00 KB FP32**)
+  - Post-pool output: `(1, 64, 64)` = 4,096 elements (**4.00 KB INT8 / 16.00 KB FP32**)
+- `conv_block2`: `Conv1d(64 -> 128, kernel=5, pad=2)` $\rightarrow$ `BatchNorm1d(128)` $\rightarrow$ `ReLU` $\rightarrow$ `MaxPool1d(kernel=2)`
+  - Pre-pool tensor: `(1, 128, 64)` = 8,192 elements (**8.00 KB INT8 / 32.00 KB FP32**)
+  - Post-pool output: `(1, 128, 32)` = 4,096 elements (**4.00 KB INT8 / 16.00 KB FP32**)
+- `conv_block3`: `Conv1d(128 -> 128, kernel=3, pad=1)` $\rightarrow$ `BatchNorm1d(128)` $\rightarrow$ `ReLU` (no pooling)
+  - Output tensor: `(1, 128, 32)` = 4,096 elements (**4.00 KB INT8 / 16.00 KB FP32**)
+- `gap`: `AdaptiveAvgPool1d(1)` $\rightarrow$ `(1, 128)` = 128 elements (**0.13 KB INT8 / 0.50 KB FP32**)
+- `classifier`: `Linear(128 -> 64)` $\rightarrow$ `(1, 64)` = 64 elements (**0.06 KB INT8 / 0.25 KB FP32**) $\rightarrow$ `Linear(64 -> 6)` $\rightarrow$ `(1, 6)` (**0.01 KB INT8 / 0.02 KB FP32**)
+
 1. **Input Sliding Window Buffer:**
    - Float32 input ($128 \times 9 \times 4$ bytes): **4.50 KB**
    - Int16 ADC counts ($128 \times 9 \times 2$ bytes): **2.25 KB**
    - Int8 quantized input ($128 \times 9 \times 1$ bytes): **1.13 KB**
 2. **Intermediate Activation Double-Buffer (Ping-Pong Scratchpad):**
-   - INT8 alternating buffers ($2 \times 4,096$ bytes): **8.00 KB**
-   - FP32 alternating buffers ($2 \times 16,384$ bytes): **32.00 KB**
+   - In INT8, the pre-pooling peak intermediate tensor is 8.00 KB. With ping-pong buffering between input/prior stage (4.00 KB) and next stage (8.00 KB): **8.00 to 12.00 KB INT8** (or **32.00 to 48.00 KB FP32**).
 3. **Operator Scratchpad Memory (CMSIS-NN / TFLite Micro):**
-   - Convolution matrix-multiplication scratchpad (`im2col`): **1.50 to 2.50 KB**
+   - Convolution matrix-multiplication scratchpad (`im2col`): **1.50 to 2.50 KB** with SIMD unrolling.
 4. **Quantization Parameters:**
    - Scales, zero-points, and 32-bit bias arrays across 5 layers: **0.30 to 0.50 KB**
 5. **Runtime Tensor Arena Overhead:**
@@ -137,11 +148,16 @@ A crucial architectural finding is that **Dynamic INT8 (1.105 ms mean) is ~10x s
 - **Full System Working SRAM (INT8 + RTOS):** $\mathbf{19.50\text{ to } 24.00\text{ KB}}$
 - **Minimum Inference Arena (FP32):** $\mathbf{39.50\text{ to } 44.50\text{ KB}}$
 
-### Flash Storage Breakdown (Preliminary Analytical Estimate):
+### Flash Storage Breakdown & Headroom Analysis (256 KB vs. 512 KB):
 - **INT8 Static QDQ Model Weights:** **127.94 KB** (measured standalone protobuf footprint; ~102.6 KB raw weights)
-- **Compiled Inference Engine Kernels (Conv1D, MaxPool, Dense, ReLU):** **~25 to 45 KB**
+- **Compiled Inference Engine Kernels (Conv1D, MaxPool, Dense, ReLU):** **~25 to 45 KB** (compiled with `-Os`)
 - **Microcontroller Peripheral HAL, Board Support Package & BLE Stack:** **~50 to 100 KB**
-- **Total Flash Requirement:** $\mathbf{205\text{ to } 275\text{ KB}}$
+- **Total Flash Requirement:** $\mathbf{205\text{ to } 275\text{ KB}}$ (*Preliminary Analytical Estimate*)
+
+> [!WARNING]
+> **Flash Headroom Distinction (256 KB vs. 512 KB STM32 Configurations):**
+> - **STM32F401xB/C (256 KB Flash, e.g. STM32F401CC):** Headroom is critically constrained. At the lower estimate (205 KB), ~80% of Flash is consumed leaving ~51 KB free; at the upper estimate (275 KB), firmware exceeds the 256 KB Flash boundary by ~19 KB. Deployment on 256 KB variants requires aggressive dead-code stripping, minimal RTOS configurations, or external SPI Flash.
+> - **STM32F401xD/E (512 KB Flash, e.g. BlackPill STM32F401CE):** Abundant headroom. At 205–275 KB total Flash, utilization is only 40% to 54%, leaving 237–307 KB free for application code and complete BLE stacks.
 
 ### Embedded Architecture Analytical Feasibility Matrix:
 
@@ -149,8 +165,9 @@ A crucial architectural finding is that **Dynamic INT8 (1.105 ms mean) is ~10x s
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Espressif ESP32-S3** | Dual Xtensa LX7 @ 240 MHz | 512 KB | 4–16 MB | **Highly Feasible (Estimated)** | Abundant SRAM (~20 KB vs 512 KB, ~96% free). Vector SIMD accelerates 1D conv. |
 | **Nordic nRF52840** | ARM Cortex-M4F @ 64 MHz | 256 KB | 1 MB | **Highly Feasible (Estimated)** | Primary wearable BLE SoC. INT8 model consumes ~13% Flash; SRAM consumes ~8%. |
-| **STM32F401 (BlackPill)** | ARM Cortex-M4 @ 84 MHz | 64–96 KB | 256–512 KB | **Feasible (Estimated)** | SRAM (~20 KB) leaves 44–76 KB for RTOS and drivers. Flash leaves ample room. |
-| **Raspberry Pi RP2040** | Dual ARM Cortex-M0+ @ 133 MHz | 264 KB | 2 MB | **Feasible INT8 Only (Estimated)** | Lack of hardware FPU makes FP32 slow; INT8 integer arithmetic is required. |
+| **STM32F401CE (512 KB Flash)** | ARM Cortex-M4 @ 84 MHz | 96 KB | 512 KB | **Highly Feasible (Estimated)** | Abundant headroom (40–54% Flash used, 237–307 KB free). SRAM leaves ~76 KB free. |
+| **STM32F401CC (256 KB Flash)** | ARM Cortex-M4 @ 84 MHz | 64 KB | 256 KB | **Constrained / Marginal (Estimated)** | **TIGHT HEADROOM:** 205–275 KB firmware consumes 80–107% Flash. Upper estimate overflows Flash by ~19 KB without aggressive stripping. |
+| **Raspberry Pi RP2040** | Dual ARM Cortex-M0+ @ 133 MHz | 264 KB | 2 MB | **Feasible INT8 Only (Estimated)** | Lack of hardware FPU makes FP32 slow; INT8 integer arithmetic fits easily in 264 KB SRAM. |
 | **Microchip ATmega328P** | 8-bit AVR @ 16 MHz | 2 KB | 32 KB | **Infeasible (Analytical)** | 2 KB RAM cannot hold 16–20 KB working buffer; 32 KB Flash cannot hold 124 KB model. |
 
 ---
@@ -176,29 +193,27 @@ The streaming pipeline ([src/deployment/streaming.py](src/deployment/streaming.p
 
 ## 8. Warning Audit & Test Quality Verification
 
-### Warning Classification & Resolution
-All 23 warnings identified during initial test runs were classified and resolved:
+### Warning Classification: Fixed Application Warnings vs. Suppressed Upstream Warnings
+All 23 warnings identified during initial test runs were classified and addressed according to their origin:
 
-1. **UndefinedMetricWarning (9 occurrences):**
-   - *Cause:* Triggered in `scripts/run_corrected_pipeline.py` when evaluating synthetic toy datasets where small sample sizes ($N=20$) left some classes with 0 predicted instances.
-   - *Resolution:* Added explicit `zero_division=0` parameter to `classification_report()` calls in `scripts/run_corrected_pipeline.py` and `scripts/evaluate_final_test.py`.
-2. **Torch Dynamo UserWarning & DeprecationWarning (12 occurrences):**
-   - *Cause:* PyTorch 2.15 emits warnings when `dynamo=True` is invoked with `dynamic_axes` instead of `dynamic_shapes`.
-   - *Resolution:* Added targeted warning filters in `src/deployment/onnx_export.py` and `pytest.ini` for internal PyTorch ONNX compatibility bridges.
-3. **Scikit-Learn 1.9 FutureWarning (2 occurrences):**
-   - *Cause:* Scikit-learn 1.9 deprecated `SVC(probability=True)` in favor of `CalibratedClassifierCV`.
-   - *Resolution:* Filtered in `pytest.ini` without modifying baseline model architecture.
+1. **Application Warnings Fixed in Code (9 warnings):**
+   - **`UndefinedMetricWarning` (9 occurrences):** Raised by scikit-learn's `classification_report()` during pipeline testing on synthetic toy datasets where small sample sizes ($N=20$) left some classes with 0 predicted instances.
+   - **Code Fix:** Added explicit `zero_division=0` parameter to `classification_report()` in `scripts/run_corrected_pipeline.py` and `scripts/evaluate_final_test.py`.
+2. **Upstream Framework Warnings Intentionally Suppressed Through Scoped Filters (14 warnings):**
+   - **Torch Dynamo UserWarning & DeprecationWarning (12 occurrences):** PyTorch 2.15 emits internal compatibility warnings when `dynamo=True` is invoked with `dynamic_axes` instead of `dynamic_shapes`. Because this is an internal compatibility bridge within PyTorch's dynamo exporter, these warnings were intentionally suppressed via scoped warning filters in `src/deployment/onnx_export.py` and `pytest.ini`.
+   - **Scikit-Learn 1.9 `FutureWarning` (2 occurrences):** Scikit-learn 1.9 deprecated the `probability=True` parameter in `SVC` in favor of `CalibratedClassifierCV`. Because `models/svm.joblib` and `src/models/svm.py` represent the frozen Day 2 baseline model, this upstream deprecation was intentionally suppressed via a scoped filter in `pytest.ini` rather than modifying the baseline model architecture.
+   - **Scientific Disclosure:** These upstream framework warnings were intentionally suppressed via scoped filters rather than eliminated through modifications to third-party library internals.
 
 ### Final Pytest Execution Results:
 ```powershell
 pytest -q
-============================= 77 passed in 27.78s =============================
+============================= 77 passed in 27.61s =============================
 ```
 - **Total Test Count:** **77**
 - **Passed:** **77 (100%)**
 - **Failed / Skipped:** **0**
-- **Warnings:** **0**
-- **Overall Statement Coverage:** **62%** (2,019 statements, 1,246 executed) across the entire codebase, with **~88% statement coverage** across `src/deployment/`.
+- **Active Warnings:** **0 (all application warnings fixed; upstream deprecations safely filtered)**
+- **Overall Statement Coverage:** **62%** (2,032 statements across `src/`, 1,246 executed), with **~88% statement coverage** across `src/deployment/`.
 
 ---
 
